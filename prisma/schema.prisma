@@ -1,0 +1,168 @@
+// Obras Gestão — construção civil + arquitetura. Banco: PostgreSQL (Docker/nuvem).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Papel {
+  ADMIN
+  GESTOR
+  USUARIO
+}
+
+enum TipoCliente {
+  PF
+  PJ
+}
+
+enum StatusProjeto {
+  PLANEJAMENTO
+  EM_ANDAMENTO
+  PAUSADA
+  CONCLUIDA
+}
+
+enum StatusSubEtapa {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+}
+
+enum StatusItemRDO {
+  OK
+  ATENCAO
+  PROBLEMA
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  nome               String
+  email              String   @unique
+  senhaHash          String
+  papel              Papel    @default(USUARIO)
+  ativo              Boolean  @default(true)
+  recebeNotificacoes Boolean  @default(false)
+  criadoEm           DateTime @default(now())
+
+  projetosResponsavel Projeto[]    @relation("ProjetoResp")
+  rdosCriados         DiarioObra[] @relation("RDOCriados")
+}
+
+model Cliente {
+  id          String      @id @default(cuid())
+  nome        String
+  tipo        TipoCliente @default(PF)
+  cpfCnpj     String?
+  telefone    String?
+  email       String?
+  endereco    String?
+  observacoes String?
+  criadoEm    DateTime    @default(now())
+
+  projetos Projeto[]
+}
+
+/// Núcleo do app: um projeto/obra (construção ou projeto arquitetônico).
+model Projeto {
+  id             String        @id @default(cuid())
+  titulo         String
+  tipo           String        @default("Residencial")
+  descricao      String?
+  endereco       String?
+  areaM2         Float?
+  status         StatusProjeto @default(PLANEJAMENTO)
+  dataInicioPrev DateTime
+  dataFimPrev    DateTime
+  valorContrato  Float?
+  criadoEm       DateTime      @default(now())
+
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  responsavelId String?
+  responsavel   User?   @relation("ProjetoResp", fields: [responsavelId], references: [id], onDelete: SetNull)
+
+  etapas  EtapaProjeto[]
+  diarios DiarioObra[]
+
+  @@index([clienteId])
+}
+
+model EtapaProjeto {
+  id         String    @id @default(cuid())
+  nome       String
+  inicioPrev DateTime
+  fimPrev    DateTime
+  inicioReal DateTime?
+  fimReal    DateTime?
+  progresso  Int       @default(0) // 0-100 (automático quando há sub-etapas)
+  ordem      Int       @default(0)
+
+  projetoId String
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  subEtapas SubEtapa[]
+}
+
+/// Sub-tarefa (checklist) de uma etapa; o % da etapa é calculado por estas.
+model SubEtapa {
+  id          String         @id @default(cuid())
+  titulo      String
+  descricao   String?
+  status      StatusSubEtapa @default(PENDENTE)
+  ordem       Int            @default(0)
+  concluidaEm DateTime?
+  criadoEm    DateTime       @default(now())
+
+  etapaId String
+  etapa   EtapaProjeto @relation(fields: [etapaId], references: [id], onDelete: Cascade)
+}
+
+/// Diário de Obra (RDO): registro da situação no canteiro, preenchido no celular.
+model DiarioObra {
+  id          String   @id @default(cuid())
+  data        DateTime
+  clima       String?
+  maoDeObra   String?
+  atividades  String?
+  ocorrencias String?
+  criadoEm    DateTime @default(now())
+
+  projetoId String
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  criadoPorId String?
+  criadoPor   User?   @relation("RDOCriados", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  itens ItemChecklistRDO[]
+  fotos FotoRDO[]
+
+  @@index([projetoId, data])
+}
+
+/// Item do checklist de situação do RDO (ex.: "Fundação", "Segurança/EPI").
+model ItemChecklistRDO {
+  id         String        @id @default(cuid())
+  titulo     String
+  status     StatusItemRDO @default(OK)
+  observacao String?
+  ordem      Int           @default(0)
+
+  diarioId String
+  diario   DiarioObra @relation(fields: [diarioId], references: [id], onDelete: Cascade)
+}
+
+model FotoRDO {
+  id       String   @id @default(cuid())
+  url      String
+  legenda  String?
+  criadoEm DateTime @default(now())
+
+  diarioId String
+  diario   DiarioObra @relation(fields: [diarioId], references: [id], onDelete: Cascade)
+}
