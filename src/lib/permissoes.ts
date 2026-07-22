@@ -7,6 +7,7 @@ import type { Papel } from "@prisma/client";
  * - ADMIN: tudo + gestão de usuários.
  */
 export const PAPEL_LABEL: Record<Papel, string> = {
+  SUPER_ADMIN: "Super Admin",
   ADMIN: "Administrador",
   GESTOR: "Gestor",
   USUARIO: "Usuário",
@@ -18,4 +19,8 @@ export function podeEditar(papel: Papel | undefined | null): boolean {
 
 export function ehAdmin(papel: Papel | undefined | null): boolean {
   return papel === "ADMIN";
+}
+
+export function ehSuperAdmin(papel: Papel | undefined | null): boolean {
+  return papel === "SUPER_ADMIN";
 }

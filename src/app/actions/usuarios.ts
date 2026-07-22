@@ -4,15 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
-import { ehAdmin } from "@/lib/permissoes";
-
-async function exigirAdmin() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado.");
-  if (!ehAdmin(session.user.papel)) throw new Error("Sem permissão.");
-  return session;
-}
+import { exigirAdminDaOrg } from "@/lib/sessao";
 
 const criarSchema = z.object({
   nome: z.string().min(1, "Informe o nome."),
@@ -23,7 +15,7 @@ const criarSchema = z.object({
 });
 
 export async function criarUsuario(formData: FormData) {
-  await exigirAdmin();
+  const s = await exigirAdminDaOrg();
   const d = criarSchema.parse({
     nome: formData.get("nome"),
     email: formData.get("email"),
@@ -36,6 +28,7 @@ export async function criarUsuario(formData: FormData) {
   }
   await prisma.user.create({
     data: {
+      organizacaoId: s.organizacaoId,
       nome: d.nome,
       email: d.email,
       senhaHash: await bcrypt.hash(d.senha, 10),
@@ -57,7 +50,7 @@ const atualizarSchema = z.object({
 });
 
 export async function atualizarUsuario(formData: FormData) {
-  await exigirAdmin();
+  const s = await exigirAdminDaOrg();
   const d = atualizarSchema.parse({
     id: formData.get("id"),
     nome: formData.get("nome"),
@@ -82,14 +75,14 @@ export async function atualizarUsuario(formData: FormData) {
     recebeNotificacoes: d.recebeNotificacoes ?? false,
   };
   if (d.senha && d.senha.length >= 6) data.senhaHash = await bcrypt.hash(d.senha, 10);
-  await prisma.user.update({ where: { id: d.id }, data });
+  await prisma.user.updateMany({ where: { id: d.id, organizacaoId: s.organizacaoId }, data });
   revalidatePath("/usuarios");
 }
 
 export async function excluirUsuario(formData: FormData) {
-  const session = await exigirAdmin();
+  const s = await exigirAdminDaOrg();
   const id = String(formData.get("id"));
-  if (id === session.user.id) throw new Error("Você não pode excluir o próprio usuário.");
-  await prisma.user.delete({ where: { id } });
+  if (id === s.userId) throw new Error("Você não pode excluir o próprio usuário.");
+  await prisma.user.deleteMany({ where: { id, organizacaoId: s.organizacaoId } });
   revalidatePath("/usuarios");
 }

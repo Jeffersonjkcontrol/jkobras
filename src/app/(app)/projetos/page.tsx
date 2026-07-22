@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Plus, HardHat, ArrowRight, MapPin } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { sessaoOrg } from "@/lib/sessao";
 import { podeEditar } from "@/lib/permissoes";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,23 +17,27 @@ import { statusCalculadoProjeto, STATUS_LABEL, STATUS_TONE } from "@/lib/projeto
 import { lerPagina, par, type SP } from "@/lib/listagem";
 
 export default async function ProjetosPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const session = await auth();
-  const editavel = podeEditar(session?.user.papel);
+  const s = await sessaoOrg();
+  const org = s.organizacaoId;
+  const editavel = podeEditar(s.papel);
 
   const sp = await searchParams;
   const busca = par(sp, "busca");
   const { pagina, skip, take } = lerPagina(sp);
   const hoje = new Date();
 
-  const where: Prisma.ProjetoWhereInput = busca
-    ? {
-        OR: [
-          { titulo: { contains: busca, mode: "insensitive" } },
-          { endereco: { contains: busca, mode: "insensitive" } },
-          { cliente: { nome: { contains: busca, mode: "insensitive" } } },
-        ],
-      }
-    : {};
+  const where: Prisma.ProjetoWhereInput = {
+    organizacaoId: org,
+    ...(busca
+      ? {
+          OR: [
+            { titulo: { contains: busca, mode: "insensitive" } },
+            { endereco: { contains: busca, mode: "insensitive" } },
+            { cliente: { nome: { contains: busca, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
 
   const [projetos, totalCount, clientes, responsaveis] = await Promise.all([
     prisma.projeto.findMany({
@@ -44,8 +48,8 @@ export default async function ProjetosPage({ searchParams }: { searchParams: Pro
       include: { etapas: true, cliente: { select: { nome: true } } },
     }),
     prisma.projeto.count({ where }),
-    prisma.cliente.findMany({ orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
-    prisma.user.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
+    prisma.cliente.findMany({ where: { organizacaoId: org }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
+    prisma.user.findMany({ where: { ativo: true, organizacaoId: org }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
   ]);
 
   const semClientes = clientes.length === 0;

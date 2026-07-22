@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, HardHat, Users2, Contact, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, HardHat, Users2, Contact, Settings, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Papel } from "@prisma/client";
 
@@ -13,6 +13,7 @@ const itens: Item[] = [
   { href: "/projetos", label: "Projetos", icon: HardHat },
   { href: "/clientes", label: "Clientes", icon: Contact },
   { href: "/usuarios", label: "Usuários", icon: Users2, somenteAdmin: true },
+  { href: "/configuracoes", label: "Configurações", icon: Settings, somenteAdmin: true },
 ];
 
 export function Sidebar({ papel }: { papel: Papel }) {

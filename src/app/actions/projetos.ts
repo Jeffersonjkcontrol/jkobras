@@ -4,13 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
-import { podeEditar } from "@/lib/permissoes";
+import { exigirGestorDaOrg } from "@/lib/sessao";
 
-async function exigirGestor() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado.");
-  if (!podeEditar(session.user.papel)) throw new Error("Sem permissão.");
+/** Garante que o projeto pertence à organização (retorna o organizacaoId). */
+async function projetoDaOrg(projetoId: string, organizacaoId: string): Promise<string> {
+  const p = await prisma.projeto.findFirst({ where: { id: projetoId, organizacaoId }, select: { id: true } });
+  if (!p) throw new Error("Projeto não encontrado.");
+  return organizacaoId;
 }
 
 // ---- Projeto ----
@@ -46,7 +46,7 @@ function lerProjeto(formData: FormData) {
   });
 }
 
-function dadosProjeto(d: ReturnType<typeof lerProjeto>) {
+function dadosBase(d: ReturnType<typeof lerProjeto>) {
   return {
     titulo: d.titulo,
     clienteId: d.clienteId,
@@ -62,27 +62,35 @@ function dadosProjeto(d: ReturnType<typeof lerProjeto>) {
   };
 }
 
+/** Confere que o cliente escolhido é da mesma organização (evita vincular a cliente de outro tenant). */
+async function clienteDaOrg(clienteId: string, organizacaoId: string) {
+  const c = await prisma.cliente.findFirst({ where: { id: clienteId, organizacaoId }, select: { id: true } });
+  if (!c) throw new Error("Cliente inválido.");
+}
+
 export async function criarProjeto(formData: FormData) {
-  await exigirGestor();
+  const s = await exigirGestorDaOrg();
   const d = lerProjeto(formData);
-  const p = await prisma.projeto.create({ data: dadosProjeto(d) });
+  await clienteDaOrg(d.clienteId, s.organizacaoId);
+  const p = await prisma.projeto.create({ data: { ...dadosBase(d), organizacaoId: s.organizacaoId } });
   revalidatePath("/projetos");
   redirect(`/projetos/${p.id}`);
 }
 
 export async function atualizarProjeto(formData: FormData) {
-  await exigirGestor();
+  const s = await exigirGestorDaOrg();
   const id = String(formData.get("id"));
   const d = lerProjeto(formData);
-  await prisma.projeto.update({ where: { id }, data: dadosProjeto(d) });
+  await clienteDaOrg(d.clienteId, s.organizacaoId);
+  await prisma.projeto.updateMany({ where: { id, organizacaoId: s.organizacaoId }, data: dadosBase(d) });
   revalidatePath("/projetos");
   revalidatePath(`/projetos/${id}`);
 }
 
 export async function excluirProjeto(formData: FormData) {
-  await exigirGestor();
+  const s = await exigirGestorDaOrg();
   const id = String(formData.get("id"));
-  await prisma.projeto.delete({ where: { id } });
+  await prisma.projeto.deleteMany({ where: { id, organizacaoId: s.organizacaoId } });
   revalidatePath("/projetos");
   redirect("/projetos");
 }
@@ -97,17 +105,8 @@ const etapaSchema = z.object({
   ordem: z.coerce.number().optional(),
 });
 
-function datasReais(progresso: number) {
-  const hoje = new Date();
-  return {
-    inicioReal: progresso > 0 ? hoje : null,
-    fimReal: progresso >= 100 ? hoje : null,
-  };
-}
-
-export async function criarEtapa(formData: FormData) {
-  await exigirGestor();
-  const d = etapaSchema.parse({
+function lerEtapa(formData: FormData) {
+  return etapaSchema.parse({
     projetoId: formData.get("projetoId"),
     nome: formData.get("nome"),
     inicioPrev: formData.get("inicioPrev"),
@@ -115,9 +114,21 @@ export async function criarEtapa(formData: FormData) {
     progresso: formData.get("progresso") ?? 0,
     ordem: formData.get("ordem") ?? 0,
   });
+}
+
+function datasReais(progresso: number) {
+  const hoje = new Date();
+  return { inicioReal: progresso > 0 ? hoje : null, fimReal: progresso >= 100 ? hoje : null };
+}
+
+export async function criarEtapa(formData: FormData) {
+  const s = await exigirGestorDaOrg();
+  const d = lerEtapa(formData);
+  await projetoDaOrg(d.projetoId, s.organizacaoId);
   const prog = d.progresso ?? 0;
   await prisma.etapaProjeto.create({
     data: {
+      organizacaoId: s.organizacaoId,
       projetoId: d.projetoId,
       nome: d.nome,
       inicioPrev: new Date(d.inicioPrev),
@@ -131,19 +142,12 @@ export async function criarEtapa(formData: FormData) {
 }
 
 export async function atualizarEtapa(formData: FormData) {
-  await exigirGestor();
+  const s = await exigirGestorDaOrg();
   const id = String(formData.get("id"));
-  const d = etapaSchema.parse({
-    projetoId: formData.get("projetoId"),
-    nome: formData.get("nome"),
-    inicioPrev: formData.get("inicioPrev"),
-    fimPrev: formData.get("fimPrev"),
-    progresso: formData.get("progresso") ?? 0,
-    ordem: formData.get("ordem") ?? 0,
-  });
+  const d = lerEtapa(formData);
   const prog = d.progresso ?? 0;
-  await prisma.etapaProjeto.update({
-    where: { id },
+  await prisma.etapaProjeto.updateMany({
+    where: { id, organizacaoId: s.organizacaoId },
     data: {
       nome: d.nome,
       inicioPrev: new Date(d.inicioPrev),
@@ -157,10 +161,10 @@ export async function atualizarEtapa(formData: FormData) {
 }
 
 export async function excluirEtapa(formData: FormData) {
-  await exigirGestor();
+  const s = await exigirGestorDaOrg();
   const id = String(formData.get("id"));
   const projetoId = String(formData.get("projetoId"));
-  await prisma.etapaProjeto.delete({ where: { id } });
+  await prisma.etapaProjeto.deleteMany({ where: { id, organizacaoId: s.organizacaoId } });
   revalidatePath(`/projetos/${projetoId}`);
 }
 
@@ -173,27 +177,35 @@ const subEtapaSchema = z.object({
   ordem: z.coerce.number().optional(),
 });
 
-async function recalcularProgressoEtapa(etapaId: string) {
-  const subs = await prisma.subEtapa.findMany({ where: { etapaId }, select: { status: true } });
-  if (subs.length === 0) return;
-  const feitas = subs.filter((s) => s.status === "CONCLUIDA").length;
-  const progresso = Math.round((feitas / subs.length) * 100);
-  await prisma.etapaProjeto.update({ where: { id: etapaId }, data: { progresso, ...datasReais(progresso) } });
-}
-
-export async function criarSubEtapa(formData: FormData) {
-  await exigirGestor();
-  const d = subEtapaSchema.parse({
+function lerSubEtapa(formData: FormData) {
+  return subEtapaSchema.parse({
     etapaId: formData.get("etapaId"),
     titulo: formData.get("titulo"),
     descricao: (formData.get("descricao") as string) || undefined,
     status: formData.get("status") || undefined,
     ordem: formData.get("ordem") ?? 0,
   });
+}
+
+async function recalcularProgressoEtapa(etapaId: string, organizacaoId: string) {
+  const subs = await prisma.subEtapa.findMany({ where: { etapaId, organizacaoId }, select: { status: true } });
+  if (subs.length === 0) return;
+  const feitas = subs.filter((s) => s.status === "CONCLUIDA").length;
+  const progresso = Math.round((feitas / subs.length) * 100);
+  await prisma.etapaProjeto.updateMany({ where: { id: etapaId, organizacaoId }, data: { progresso, ...datasReais(progresso) } });
+}
+
+export async function criarSubEtapa(formData: FormData) {
+  const s = await exigirGestorDaOrg();
+  const d = lerSubEtapa(formData);
   const projetoId = String(formData.get("projetoId"));
+  // etapa precisa ser da org
+  const etapa = await prisma.etapaProjeto.findFirst({ where: { id: d.etapaId, organizacaoId: s.organizacaoId }, select: { id: true } });
+  if (!etapa) throw new Error("Etapa inválida.");
   const status = d.status ?? "PENDENTE";
   await prisma.subEtapa.create({
     data: {
+      organizacaoId: s.organizacaoId,
       etapaId: d.etapaId,
       titulo: d.titulo,
       descricao: d.descricao,
@@ -202,24 +214,18 @@ export async function criarSubEtapa(formData: FormData) {
       concluidaEm: status === "CONCLUIDA" ? new Date() : null,
     },
   });
-  await recalcularProgressoEtapa(d.etapaId);
+  await recalcularProgressoEtapa(d.etapaId, s.organizacaoId);
   revalidatePath(`/projetos/${projetoId}`);
 }
 
 export async function atualizarSubEtapa(formData: FormData) {
-  await exigirGestor();
+  const s = await exigirGestorDaOrg();
   const id = String(formData.get("id"));
-  const d = subEtapaSchema.parse({
-    etapaId: formData.get("etapaId"),
-    titulo: formData.get("titulo"),
-    descricao: (formData.get("descricao") as string) || undefined,
-    status: formData.get("status") || undefined,
-    ordem: formData.get("ordem") ?? 0,
-  });
+  const d = lerSubEtapa(formData);
   const projetoId = String(formData.get("projetoId"));
   const status = d.status ?? "PENDENTE";
-  await prisma.subEtapa.update({
-    where: { id },
+  await prisma.subEtapa.updateMany({
+    where: { id, organizacaoId: s.organizacaoId },
     data: {
       titulo: d.titulo,
       descricao: d.descricao,
@@ -228,31 +234,31 @@ export async function atualizarSubEtapa(formData: FormData) {
       concluidaEm: status === "CONCLUIDA" ? new Date() : null,
     },
   });
-  await recalcularProgressoEtapa(d.etapaId);
+  await recalcularProgressoEtapa(d.etapaId, s.organizacaoId);
   revalidatePath(`/projetos/${projetoId}`);
 }
 
 export async function alternarSubEtapa(formData: FormData) {
-  await exigirGestor();
+  const s = await exigirGestorDaOrg();
   const id = String(formData.get("id"));
   const projetoId = String(formData.get("projetoId"));
-  const sub = await prisma.subEtapa.findUnique({ where: { id } });
+  const sub = await prisma.subEtapa.findFirst({ where: { id, organizacaoId: s.organizacaoId } });
   if (!sub) return;
   const novo = sub.status === "CONCLUIDA" ? "PENDENTE" : "CONCLUIDA";
-  await prisma.subEtapa.update({
-    where: { id },
+  await prisma.subEtapa.updateMany({
+    where: { id, organizacaoId: s.organizacaoId },
     data: { status: novo, concluidaEm: novo === "CONCLUIDA" ? new Date() : null },
   });
-  await recalcularProgressoEtapa(sub.etapaId);
+  await recalcularProgressoEtapa(sub.etapaId, s.organizacaoId);
   revalidatePath(`/projetos/${projetoId}`);
 }
 
 export async function excluirSubEtapa(formData: FormData) {
-  await exigirGestor();
+  const s = await exigirGestorDaOrg();
   const id = String(formData.get("id"));
   const projetoId = String(formData.get("projetoId"));
-  const sub = await prisma.subEtapa.findUnique({ where: { id } });
-  await prisma.subEtapa.delete({ where: { id } });
-  if (sub) await recalcularProgressoEtapa(sub.etapaId);
+  const sub = await prisma.subEtapa.findFirst({ where: { id, organizacaoId: s.organizacaoId } });
+  await prisma.subEtapa.deleteMany({ where: { id, organizacaoId: s.organizacaoId } });
+  if (sub) await recalcularProgressoEtapa(sub.etapaId, s.organizacaoId);
   revalidatePath(`/projetos/${projetoId}`);
 }

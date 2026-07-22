@@ -16,7 +16,7 @@ import {
   CloudSun,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { sessaoOrg } from "@/lib/sessao";
 import { podeEditar } from "@/lib/permissoes";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,12 +60,13 @@ const ITEM_RDO_LABEL: Record<string, string> = { OK: "OK", ATENCAO: "Atenção",
 
 export default async function ProjetoDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await auth();
-  const editavel = podeEditar(session?.user.papel);
+  const s = await sessaoOrg();
+  const org = s.organizacaoId;
+  const editavel = podeEditar(s.papel);
 
   const [projeto, clientes, responsaveis] = await Promise.all([
-    prisma.projeto.findUnique({
-      where: { id },
+    prisma.projeto.findFirst({
+      where: { id, organizacaoId: org },
       include: {
         cliente: { select: { id: true, nome: true } },
         responsavel: { select: { nome: true } },
@@ -76,8 +77,8 @@ export default async function ProjetoDetalhePage({ params }: { params: Promise<{
         },
       },
     }),
-    prisma.cliente.findMany({ orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
-    prisma.user.findMany({ where: { ativo: true }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
+    prisma.cliente.findMany({ where: { organizacaoId: org }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
+    prisma.user.findMany({ where: { ativo: true, organizacaoId: org }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
   ]);
   if (!projeto) notFound();
 

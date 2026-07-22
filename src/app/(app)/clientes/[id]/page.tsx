@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Pencil, Phone, Mail, MapPin, HardHat, ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { sessaoOrg } from "@/lib/sessao";
 import { podeEditar } from "@/lib/permissoes";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +15,11 @@ import { statusCalculadoProjeto, STATUS_LABEL, STATUS_TONE } from "@/lib/projeto
 
 export default async function ClienteDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await auth();
-  const editavel = podeEditar(session?.user.papel);
+  const s = await sessaoOrg();
+  const editavel = podeEditar(s.papel);
 
-  const cliente = await prisma.cliente.findUnique({
-    where: { id },
+  const cliente = await prisma.cliente.findFirst({
+    where: { id, organizacaoId: s.organizacaoId },
     include: { projetos: { include: { etapas: true }, orderBy: { criadoEm: "desc" } } },
   });
   if (!cliente) notFound();

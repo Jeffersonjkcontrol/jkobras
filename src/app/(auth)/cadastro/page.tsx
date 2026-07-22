@@ -2,9 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { HardHat } from "lucide-react";
 import { auth } from "@/auth";
-import { LoginForm } from "@/components/login-form";
+import { CadastroForm } from "@/components/forms/cadastro-form";
 
-export default async function LoginPage() {
+export default async function CadastroPage() {
   const session = await auth();
   if (session?.user) redirect("/");
 
@@ -15,17 +15,17 @@ export default async function LoginPage() {
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <HardHat className="h-6 w-6" />
           </div>
-          <h1 className="text-xl font-bold text-foreground">Obras Gestão</h1>
-          <p className="text-sm text-muted">Acesse com suas credenciais</p>
+          <h1 className="text-xl font-bold text-foreground">Criar conta — Obras Gestão</h1>
+          <p className="text-sm text-muted">Cadastre seu escritório e comece a usar</p>
         </div>
 
         <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
-          <LoginForm />
+          <CadastroForm />
         </div>
 
         <p className="mt-4 text-center text-sm text-muted">
-          Novo escritório?{" "}
-          <Link href="/cadastro" className="font-medium text-primary hover:underline">Criar conta</Link>
+          Já tem conta?{" "}
+          <Link href="/login" className="font-medium text-primary hover:underline">Entrar</Link>
         </p>
       </div>
     </div>

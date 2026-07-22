@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Plus, Pencil, Contact, ArrowRight } from "lucide-react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { sessaoOrg } from "@/lib/sessao";
 import { podeEditar } from "@/lib/permissoes";
 import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Modal } from "@/components/ui/modal";
@@ -15,22 +15,25 @@ import { criarCliente, atualizarCliente, excluirCliente } from "@/app/actions/cl
 import { lerPagina, par, type SP } from "@/lib/listagem";
 
 export default async function ClientesPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const session = await auth();
-  const editavel = podeEditar(session?.user.papel);
+  const s = await sessaoOrg();
+  const editavel = podeEditar(s.papel);
 
   const sp = await searchParams;
   const busca = par(sp, "busca");
   const { pagina, skip, take } = lerPagina(sp);
 
-  const where: Prisma.ClienteWhereInput = busca
-    ? {
-        OR: [
-          { nome: { contains: busca, mode: "insensitive" } },
-          { cpfCnpj: { contains: busca, mode: "insensitive" } },
-          { email: { contains: busca, mode: "insensitive" } },
-        ],
-      }
-    : {};
+  const where: Prisma.ClienteWhereInput = {
+    organizacaoId: s.organizacaoId,
+    ...(busca
+      ? {
+          OR: [
+            { nome: { contains: busca, mode: "insensitive" } },
+            { cpfCnpj: { contains: busca, mode: "insensitive" } },
+            { email: { contains: busca, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
 
   const [clientes, totalCount] = await Promise.all([
     prisma.cliente.findMany({

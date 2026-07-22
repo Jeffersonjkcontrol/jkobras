@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { HardHat, AlertTriangle, ClipboardList, Contact, ArrowRight, type LucideIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { sessaoOrg } from "@/lib/sessao";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarrasSimples } from "@/components/charts";
@@ -39,14 +39,15 @@ function Kpi({ titulo, valor, icon: Icon, tone = "primary", href }: {
 }
 
 export default async function DashboardPage() {
-  const session = await auth();
+  const s = await sessaoOrg();
+  const org = s.organizacaoId;
   const hoje = new Date();
   const seteDiasAtras = new Date(hoje.getTime() - 7 * 24 * 3600 * 1000);
 
   const [projetos, nClientes, rdosSemana] = await Promise.all([
-    prisma.projeto.findMany({ include: { etapas: true, cliente: { select: { nome: true } } } }),
-    prisma.cliente.count(),
-    prisma.diarioObra.count({ where: { data: { gte: seteDiasAtras } } }),
+    prisma.projeto.findMany({ where: { organizacaoId: org }, include: { etapas: true, cliente: { select: { nome: true } } } }),
+    prisma.cliente.count({ where: { organizacaoId: org } }),
+    prisma.diarioObra.count({ where: { organizacaoId: org, data: { gte: seteDiasAtras } } }),
   ]);
 
   const comStatus = projetos.map((p) => ({
@@ -70,7 +71,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Olá, {session?.user.name?.split(" ")[0]} 👋</h1>
+        <h1 className="text-2xl font-bold text-foreground">Olá, {s.nome.split(" ")[0]} 👋</h1>
         <p className="text-sm text-muted">Visão geral das obras e projetos.</p>
       </div>
 

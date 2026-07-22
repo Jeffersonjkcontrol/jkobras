@@ -10,9 +10,24 @@ datasource db {
 }
 
 enum Papel {
+  SUPER_ADMIN
   ADMIN
   GESTOR
   USUARIO
+}
+
+/// Escritório/tenant. Cada organização tem dados isolados e sua própria marca (nome + logo).
+model Organizacao {
+  id       String   @id @default(cuid())
+  nome     String
+  slug     String   @unique
+  logoData String?
+  ativa    Boolean  @default(true)
+  criadoEm DateTime @default(now())
+
+  usuarios User[]
+  clientes Cliente[]
+  projetos Projeto[]
 }
 
 enum TipoCliente {
@@ -49,8 +64,14 @@ model User {
   recebeNotificacoes Boolean  @default(false)
   criadoEm           DateTime @default(now())
 
+  // Tenant: SUPER_ADMIN (dono da plataforma) não pertence a nenhuma organização.
+  organizacaoId String?
+  organizacao   Organizacao? @relation(fields: [organizacaoId], references: [id], onDelete: Cascade)
+
   projetosResponsavel Projeto[]    @relation("ProjetoResp")
   rdosCriados         DiarioObra[] @relation("RDOCriados")
+
+  @@index([organizacaoId])
 }
 
 model Cliente {
@@ -64,7 +85,12 @@ model Cliente {
   observacoes String?
   criadoEm    DateTime    @default(now())
 
+  organizacaoId String
+  organizacao   Organizacao @relation(fields: [organizacaoId], references: [id], onDelete: Cascade)
+
   projetos Projeto[]
+
+  @@index([organizacaoId])
 }
 
 /// Núcleo do app: um projeto/obra (construção ou projeto arquitetônico).
@@ -81,6 +107,9 @@ model Projeto {
   valorContrato  Float?
   criadoEm       DateTime      @default(now())
 
+  organizacaoId String
+  organizacao   Organizacao @relation(fields: [organizacaoId], references: [id], onDelete: Cascade)
+
   clienteId String
   cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Restrict)
 
@@ -91,6 +120,7 @@ model Projeto {
   diarios DiarioObra[]
 
   @@index([clienteId])
+  @@index([organizacaoId])
 }
 
 model EtapaProjeto {
@@ -103,10 +133,14 @@ model EtapaProjeto {
   progresso  Int       @default(0) // 0-100 (automático quando há sub-etapas)
   ordem      Int       @default(0)
 
+  organizacaoId String // herdado do projeto (escopo de tenant)
+
   projetoId String
   projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
 
   subEtapas SubEtapa[]
+
+  @@index([organizacaoId])
 }
 
 /// Sub-tarefa (checklist) de uma etapa; o % da etapa é calculado por estas.
@@ -119,8 +153,12 @@ model SubEtapa {
   concluidaEm DateTime?
   criadoEm    DateTime       @default(now())
 
+  organizacaoId String
+
   etapaId String
   etapa   EtapaProjeto @relation(fields: [etapaId], references: [id], onDelete: Cascade)
+
+  @@index([organizacaoId])
 }
 
 /// Diário de Obra (RDO): registro da situação no canteiro, preenchido no celular.
@@ -133,6 +171,8 @@ model DiarioObra {
   ocorrencias String?
   criadoEm    DateTime @default(now())
 
+  organizacaoId String
+
   projetoId String
   projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
 
@@ -143,6 +183,7 @@ model DiarioObra {
   fotos FotoRDO[]
 
   @@index([projetoId, data])
+  @@index([organizacaoId])
 }
 
 /// Item do checklist de situação do RDO (ex.: "Fundação", "Segurança/EPI").

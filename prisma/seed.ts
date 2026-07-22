@@ -10,10 +10,31 @@ function addDays(d: Date, n: number): Date {
 }
 
 async function main() {
+  // Super-admin (dono da plataforma, sem organização)
+  await prisma.user.upsert({
+    where: { email: "super@obras.com" },
+    update: {},
+    create: {
+      nome: "Super Admin",
+      email: "super@obras.com",
+      senhaHash: await bcrypt.hash("super123", 10),
+      papel: "SUPER_ADMIN",
+      ativo: true,
+    },
+  });
+
+  // Escritório demo (tenant)
+  const org = await prisma.organizacao.upsert({
+    where: { slug: "escritorio-demo" },
+    update: {},
+    create: { nome: "Escritório Demo", slug: "escritorio-demo" },
+  });
+
   const admin = await prisma.user.upsert({
     where: { email: "admin@obras.com" },
     update: {},
     create: {
+      organizacaoId: org.id,
       nome: "Administrador",
       email: "admin@obras.com",
       senhaHash: await bcrypt.hash("admin123", 10),
@@ -27,6 +48,7 @@ async function main() {
     where: { email: "gestor@obras.com" },
     update: {},
     create: {
+      organizacaoId: org.id,
       nome: "Gestor de Obra",
       email: "gestor@obras.com",
       senhaHash: await bcrypt.hash("gestor123", 10),
@@ -35,10 +57,11 @@ async function main() {
     },
   });
 
-  if ((await prisma.cliente.count()) === 0) {
+  if ((await prisma.cliente.count({ where: { organizacaoId: org.id } })) === 0) {
     const hoje = new Date();
     const cliente = await prisma.cliente.create({
       data: {
+        organizacaoId: org.id,
         nome: "Família Silva",
         tipo: "PF",
         telefone: "(19) 99999-0000",
@@ -47,6 +70,7 @@ async function main() {
     });
     const proj = await prisma.projeto.create({
       data: {
+        organizacaoId: org.id,
         titulo: "Residência Silva",
         tipo: "Residencial",
         clienteId: cliente.id,
@@ -70,6 +94,7 @@ async function main() {
     for (const e of etapas) {
       await prisma.etapaProjeto.create({
         data: {
+          organizacaoId: org.id,
           projetoId: proj.id,
           nome: e.nome,
           ordem: ordem++,
@@ -83,7 +108,9 @@ async function main() {
     }
   }
 
-  console.log("Seed concluído. Login: admin@obras.com / admin123 (e gestor@obras.com / gestor123)");
+  console.log(
+    "Seed multi-tenant concluído. super@obras.com/super123 (painel) · admin@obras.com/admin123 · gestor@obras.com/gestor123 (Escritório Demo)"
+  );
 }
 
 main()

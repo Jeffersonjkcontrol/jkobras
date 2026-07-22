@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Plus, Pencil } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { sessaoOrg } from "@/lib/sessao";
 import { ehAdmin, PAPEL_LABEL } from "@/lib/permissoes";
 import { PageHeader } from "@/components/ui/page-header";
 import { Modal } from "@/components/ui/modal";
@@ -12,10 +12,13 @@ import { UsuarioForm } from "@/components/forms/usuario-form";
 import { criarUsuario, atualizarUsuario, excluirUsuario } from "@/app/actions/usuarios";
 
 export default async function UsuariosPage() {
-  const session = await auth();
-  if (!ehAdmin(session?.user.papel)) redirect("/");
+  const s = await sessaoOrg();
+  if (!ehAdmin(s.papel)) redirect("/");
 
-  const usuarios = await prisma.user.findMany({ orderBy: { nome: "asc" } });
+  const usuarios = await prisma.user.findMany({
+    where: { organizacaoId: s.organizacaoId },
+    orderBy: { nome: "asc" },
+  });
 
   return (
     <div>
@@ -65,7 +68,7 @@ export default async function UsuariosPage() {
                   >
                     <UsuarioForm action={atualizarUsuario} usuario={u} />
                   </Modal>
-                  {u.id !== session!.user.id && <DeleteButton action={excluirUsuario} id={u.id} />}
+                  {u.id !== s.userId && <DeleteButton action={excluirUsuario} id={u.id} />}
                 </div>
               </TD>
             </TR>

@@ -6,15 +6,9 @@ import path from "path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
 import { podeEditar } from "@/lib/permissoes";
+import { sessaoOrg } from "@/lib/sessao";
 import type { StatusItemRDO } from "@prisma/client";
-
-async function exigirAutenticado() {
-  const session = await auth();
-  if (!session?.user) throw new Error("Não autenticado.");
-  return session;
-}
 
 // Apenas imagens; extensão derivada do tipo (evita servir arquivo malicioso de /uploads).
 const TIPOS_FOTO: Record<string, string> = {
@@ -39,9 +33,14 @@ async function salvarFoto(arquivo: File): Promise<string | null> {
 const STATUS_OK: StatusItemRDO[] = ["OK", "ATENCAO", "PROBLEMA"];
 
 export async function criarRDO(formData: FormData) {
-  const session = await exigirAutenticado();
+  const s = await sessaoOrg();
   const projetoId = String(formData.get("projetoId"));
   if (!projetoId) throw new Error("Projeto inválido.");
+  const projeto = await prisma.projeto.findFirst({
+    where: { id: projetoId, organizacaoId: s.organizacaoId },
+    select: { id: true },
+  });
+  if (!projeto) throw new Error("Projeto não encontrado.");
 
   const dataStr = String(formData.get("data") || "");
   const data = dataStr ? new Date(dataStr) : new Date();
@@ -65,13 +64,14 @@ export async function criarRDO(formData: FormData) {
 
   await prisma.diarioObra.create({
     data: {
+      organizacaoId: s.organizacaoId,
       projetoId,
       data,
       clima: (formData.get("clima") as string) || null,
       maoDeObra: (formData.get("maoDeObra") as string) || null,
       atividades: (formData.get("atividades") as string) || null,
       ocorrencias: (formData.get("ocorrencias") as string) || null,
-      criadoPorId: session.user.id,
+      criadoPorId: s.userId,
       itens: { create: itens },
       fotos: { create: fotos },
     },
@@ -81,15 +81,16 @@ export async function criarRDO(formData: FormData) {
 }
 
 export async function excluirRDO(formData: FormData) {
-  const session = await exigirAutenticado();
+  const s = await sessaoOrg();
   const id = String(formData.get("id"));
   const projetoId = String(formData.get("projetoId"));
-  const rdo = await prisma.diarioObra.findUnique({ where: { id } });
+  const rdo = await prisma.diarioObra.findFirst({ where: { id, organizacaoId: s.organizacaoId } });
+  if (!rdo) throw new Error("RDO não encontrado.");
   // Gestor/Admin apagam qualquer um; usuário comum só o próprio.
-  if (rdo && !podeEditar(session.user.papel) && rdo.criadoPorId !== session.user.id) {
+  if (!podeEditar(s.papel) && rdo.criadoPorId !== s.userId) {
     throw new Error("Sem permissão para excluir este RDO.");
   }
-  await prisma.diarioObra.delete({ where: { id } });
+  await prisma.diarioObra.deleteMany({ where: { id, organizacaoId: s.organizacaoId } });
   revalidatePath(`/projetos/${projetoId}`);
   if (formData.get("redirecionar")) redirect(`/projetos/${projetoId}`);
 }

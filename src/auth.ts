@@ -31,8 +31,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const chaveIp = `ip:${ip}`;
         if (estaBloqueado(chaveEmail) || estaBloqueado(chaveIp)) return null;
 
-        const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+        const user = await prisma.user.findUnique({
+          where: { email: parsed.data.email },
+          include: { organizacao: { select: { ativa: true } } },
+        });
         if (!user || !user.ativo) {
+          registrarFalha(chaveEmail);
+          registrarFalha(chaveIp);
+          return null;
+        }
+        // Bloqueia login se o escritório (tenant) estiver desativado.
+        if (user.organizacao && !user.organizacao.ativa) {
           registrarFalha(chaveEmail);
           registrarFalha(chaveIp);
           return null;
@@ -53,6 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.nome,
           email: user.email,
           papel: user.papel,
+          organizacaoId: user.organizacaoId,
         };
       },
     }),
@@ -62,6 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id as string;
         token.papel = user.papel;
+        token.organizacaoId = user.organizacaoId ?? null;
       }
       return token;
     },
@@ -69,6 +80,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.papel = token.papel as Papel;
+        session.user.organizacaoId = (token.organizacaoId as string | null) ?? null;
       }
       return session;
     },
