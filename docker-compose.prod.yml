@@ -1,0 +1,67 @@
+# Modo PRODUÇÃO local (imagem buildada, estável e rápida — sem compilação sob demanda).
+# Compartilha o mesmo volume de dados (db_data) e a pasta de uploads com o modo dev.
+#
+# Uso:
+#   docker compose down                                  # para o modo dev
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   # app em http://localhost:3000  (service worker/PWA ativo)
+#
+# Para voltar ao dev:
+#   docker compose -f docker-compose.prod.yml down
+#   docker compose up -d
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: obras
+      POSTGRES_PASSWORD: obras
+      POSTGRES_DB: obras
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obras -d obras"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # One-shot: aplica as migrações e sai. Usa a imagem "builder" porque ela tem o
+  # node_modules completo (o CLI do Prisma precisa das dependências dele).
+  migrate:
+    build:
+      context: .
+      target: builder
+    command: ["sh", "-lc", "npx prisma migrate deploy"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://obras:obras@db:5432/obras?schema=public"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://obras:obras@db:5432/obras?schema=public"
+      AUTH_SECRET: "dev-secret-troque-em-producao-000000000000"
+      AUTH_TRUST_HOST: "true"
+      NODE_ENV: production
+      # Next standalone lê HOSTNAME p/ o bind; o Docker o define como o id do container,
+      # o que quebraria o acesso — forçamos 0.0.0.0.
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./public/uploads:/app/public/uploads
+
+volumes:
+  db_data:

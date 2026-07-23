@@ -40,5 +40,8 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 EXPOSE 3000
-# Em produção: aplica migrações e inicia o servidor standalone.
-CMD ["sh", "-lc", "npx prisma migrate deploy && node server.js"]
+# Só sobe o servidor. As migrações NÃO rodam aqui: a imagem standalone é enxuta e
+# não carrega as dependências do CLI do Prisma (@prisma/config e cia.).
+# Quem aplica as migrações é o serviço one-shot "migrate" do compose (imagem builder,
+# com node_modules completo), que roda antes do app — padrão de deploy real.
+CMD ["node", "server.js"]

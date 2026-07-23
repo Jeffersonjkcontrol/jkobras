@@ -25,9 +25,10 @@ model Organizacao {
   ativa    Boolean  @default(true)
   criadoEm DateTime @default(now())
 
-  usuarios User[]
-  clientes Cliente[]
-  projetos Projeto[]
+  usuarios      User[]
+  clientes      Cliente[]
+  projetos      Projeto[]
+  profissionais Profissional[]
 }
 
 enum TipoCliente {
@@ -70,6 +71,7 @@ model User {
 
   projetosResponsavel Projeto[]    @relation("ProjetoResp")
   rdosCriados         DiarioObra[] @relation("RDOCriados")
+  docsEnviados        Documento[]  @relation("DocEnviados")
 
   @@index([organizacaoId])
 }
@@ -116,8 +118,13 @@ model Projeto {
   responsavelId String?
   responsavel   User?   @relation("ProjetoResp", fields: [responsavelId], references: [id], onDelete: SetNull)
 
-  etapas  EtapaProjeto[]
-  diarios DiarioObra[]
+  etapas       EtapaProjeto[]
+  diarios      DiarioObra[]
+  orcamentos   Orcamento[]
+  lancamentos  LancamentoFinanceiro[]
+  documentos   Documento[]
+  alocacoes    AlocacaoProjeto[]
+  tarefasEquipe TarefaProfissional[]
 
   @@index([clienteId])
   @@index([organizacaoId])
@@ -157,6 +164,9 @@ model SubEtapa {
 
   etapaId String
   etapa   EtapaProjeto @relation(fields: [etapaId], references: [id], onDelete: Cascade)
+
+  responsavelProfId String?
+  responsavelProf   Profissional? @relation("SubEtapaResp", fields: [responsavelProfId], references: [id], onDelete: SetNull)
 
   @@index([organizacaoId])
 }
@@ -206,4 +216,207 @@ model FotoRDO {
 
   diarioId String
   diario   DiarioObra @relation(fields: [diarioId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Orçamentos (propostas por projeto)
+// ---------------------------------------------------------------------------
+
+enum StatusOrcamento {
+  RASCUNHO
+  ENVIADO
+  APROVADO
+  REJEITADO
+}
+
+/// Proposta/orçamento de um projeto. O total é a soma dos itens.
+model Orcamento {
+  id           String          @id @default(cuid())
+  titulo       String
+  status       StatusOrcamento @default(RASCUNHO)
+  observacoes  String?
+  validadeDias Int? // validade da proposta, em dias
+  criadoEm     DateTime        @default(now())
+
+  organizacaoId String // herdado do projeto (escopo de tenant)
+
+  projetoId String
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  itens ItemOrcamento[]
+
+  @@index([organizacaoId])
+  @@index([projetoId])
+}
+
+/// Linha de um orçamento: descrição, unidade, quantidade × valor unitário.
+model ItemOrcamento {
+  id            String @id @default(cuid())
+  descricao     String
+  unidade       String @default("un") // un, m², m³, m, vb, h, kg...
+  quantidade    Float  @default(1)
+  valorUnitario Float  @default(0)
+  ordem         Int    @default(0)
+
+  orcamentoId String
+  orcamento   Orcamento @relation(fields: [orcamentoId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Financeiro (orçado × realizado por projeto)
+// ---------------------------------------------------------------------------
+
+enum TipoLancamento {
+  RECEITA
+  DESPESA
+}
+
+enum StatusLancamento {
+  PREVISTO
+  REALIZADO
+}
+
+/// Lançamento financeiro de um projeto. PREVISTO = orçado; REALIZADO = efetivado.
+model LancamentoFinanceiro {
+  id        String           @id @default(cuid())
+  descricao String
+  tipo      TipoLancamento   @default(DESPESA)
+  categoria String? // Material, Mão de obra, Projeto, Impostos, Equipamentos...
+  valor     Float
+  data      DateTime
+  status    StatusLancamento @default(REALIZADO)
+  criadoEm  DateTime         @default(now())
+
+  organizacaoId String
+
+  projetoId String
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  @@index([organizacaoId])
+  @@index([projetoId])
+}
+
+// ---------------------------------------------------------------------------
+// Documentos / Plantas (por projeto)
+// ---------------------------------------------------------------------------
+
+enum CategoriaDocumento {
+  PLANTA
+  CONTRATO
+  LICENCA
+  ORCAMENTO
+  FOTO
+  OUTRO
+}
+
+/// Arquivo anexado a um projeto (planta, contrato, licença...). Guardado em /public/uploads.
+model Documento {
+  id        String             @id @default(cuid())
+  nome      String
+  categoria CategoriaDocumento @default(OUTRO)
+  url       String // /uploads/uuid.ext
+  mimeType  String
+  tamanho   Int // bytes
+  criadoEm  DateTime           @default(now())
+
+  organizacaoId String
+
+  projetoId String
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  enviadoPorId String?
+  enviadoPor   User?   @relation("DocEnviados", fields: [enviadoPorId], references: [id], onDelete: SetNull)
+
+  @@index([organizacaoId])
+  @@index([projetoId])
+}
+
+// ---------------------------------------------------------------------------
+// Equipe / Mão de obra (profissionais da obra)
+// ---------------------------------------------------------------------------
+
+enum TipoCusto {
+  DIARIA // valor por dia
+  HORA // valor por hora
+  EMPREITADA // valor fechado por serviço
+  MENSALISTA // salário mensal
+}
+
+enum StatusTarefa {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+}
+
+/// Profissional da obra (empreiteiro, pedreiro, encanador, eletricista...).
+/// Cadastro central do escritório; alocado às obras via AlocacaoProjeto.
+model Profissional {
+  id                String    @id @default(cuid())
+  nome              String
+  funcao            String // Pedreiro, Eletricista, Empreiteiro, Mestre de obras...
+  tipoCusto         TipoCusto @default(DIARIA)
+  custoValor        Float? // valor da diária / hora / empreitada / salário
+  telefone          String?
+  cpf               String?
+  email             String?
+  endereco          String?
+  contatoEmergencia String?
+  chavePix          String?
+  observacoes       String?
+  ativo             Boolean   @default(true)
+  criadoEm          DateTime  @default(now())
+
+  organizacaoId String
+  organizacao   Organizacao @relation(fields: [organizacaoId], references: [id], onDelete: Cascade)
+
+  alocacoes     AlocacaoProjeto[]
+  tarefas       TarefaProfissional[]
+  subEtapasResp SubEtapa[]           @relation("SubEtapaResp")
+
+  @@index([organizacaoId])
+}
+
+/// Alocação de um profissional a uma obra (com a função e o custo acordados ali).
+model AlocacaoProjeto {
+  id           String    @id @default(cuid())
+  funcaoNaObra String? // função específica nesta obra (default: a do profissional)
+  tipoCusto    TipoCusto @default(DIARIA)
+  custoValor   Float?
+  observacoes  String?
+  criadoEm     DateTime  @default(now())
+
+  organizacaoId String // herdado do projeto (escopo de tenant)
+
+  profissionalId String
+  profissional   Profissional @relation(fields: [profissionalId], references: [id], onDelete: Cascade)
+
+  projetoId String
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  @@unique([profissionalId, projetoId])
+  @@index([organizacaoId])
+  @@index([projetoId])
+}
+
+/// Tarefa de um profissional numa obra (com prazo, status e custo).
+model TarefaProfissional {
+  id          String       @id @default(cuid())
+  titulo      String
+  descricao   String?
+  status      StatusTarefa @default(PENDENTE)
+  prazo       DateTime?
+  custo       Float?
+  concluidaEm DateTime?
+  criadoEm    DateTime     @default(now())
+
+  organizacaoId String
+
+  projetoId String
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  profissionalId String?
+  profissional   Profissional? @relation(fields: [profissionalId], references: [id], onDelete: SetNull)
+
+  @@index([organizacaoId])
+  @@index([projetoId])
 }

@@ -4,7 +4,15 @@ import { Input, Label, Textarea, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useModalClose } from "@/components/ui/modal";
 
-type SubEtapa = { id: string; titulo: string; descricao: string | null; status: string; ordem: number };
+type SubEtapa = {
+  id: string;
+  titulo: string;
+  descricao: string | null;
+  status: string;
+  ordem: number;
+  responsavelProfId?: string | null;
+};
+type Prof = { id: string; nome: string; funcao: string };
 
 export function SubEtapaForm({
   action,
@@ -12,12 +20,14 @@ export function SubEtapaForm({
   etapaId,
   projetoId,
   proximaOrdem,
+  profissionais = [],
 }: {
   action: (formData: FormData) => void;
   sub?: SubEtapa;
   etapaId: string;
   projetoId: string;
   proximaOrdem?: number;
+  profissionais?: Prof[];
 }) {
   const close = useModalClose();
   return (
@@ -42,6 +52,15 @@ export function SubEtapaForm({
           <Label htmlFor="ordem">Ordem</Label>
           <Input id="ordem" name="ordem" type="number" min="0" defaultValue={sub?.ordem ?? proximaOrdem ?? 0} />
         </div>
+      </div>
+      <div>
+        <Label htmlFor="responsavelProfId">Responsável (equipe)</Label>
+        <Select id="responsavelProfId" name="responsavelProfId" defaultValue={sub?.responsavelProfId ?? ""}>
+          <option value="">— Sem responsável —</option>
+          {profissionais.map((p) => (
+            <option key={p.id} value={p.id}>{p.nome} · {p.funcao}</option>
+          ))}
+        </Select>
       </div>
       <div>
         <Label htmlFor="descricao">Descrição</Label>

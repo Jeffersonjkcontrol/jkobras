@@ -175,6 +175,7 @@ const subEtapaSchema = z.object({
   descricao: z.string().optional(),
   status: z.enum(["PENDENTE", "EM_ANDAMENTO", "CONCLUIDA"]).optional(),
   ordem: z.coerce.number().optional(),
+  responsavelProfId: z.string().optional(),
 });
 
 function lerSubEtapa(formData: FormData) {
@@ -184,7 +185,15 @@ function lerSubEtapa(formData: FormData) {
     descricao: (formData.get("descricao") as string) || undefined,
     status: formData.get("status") || undefined,
     ordem: formData.get("ordem") ?? 0,
+    responsavelProfId: (formData.get("responsavelProfId") as string) || undefined,
   });
+}
+
+/** Confere que o profissional (responsável) é da mesma organização. */
+async function profissionalOpcionalDaOrg(profId: string | undefined, organizacaoId: string) {
+  if (!profId) return;
+  const p = await prisma.profissional.findFirst({ where: { id: profId, organizacaoId }, select: { id: true } });
+  if (!p) throw new Error("Profissional inválido.");
 }
 
 async function recalcularProgressoEtapa(etapaId: string, organizacaoId: string) {
@@ -202,6 +211,7 @@ export async function criarSubEtapa(formData: FormData) {
   // etapa precisa ser da org
   const etapa = await prisma.etapaProjeto.findFirst({ where: { id: d.etapaId, organizacaoId: s.organizacaoId }, select: { id: true } });
   if (!etapa) throw new Error("Etapa inválida.");
+  await profissionalOpcionalDaOrg(d.responsavelProfId, s.organizacaoId);
   const status = d.status ?? "PENDENTE";
   await prisma.subEtapa.create({
     data: {
@@ -211,6 +221,7 @@ export async function criarSubEtapa(formData: FormData) {
       descricao: d.descricao,
       status,
       ordem: d.ordem ?? 0,
+      responsavelProfId: d.responsavelProfId || null,
       concluidaEm: status === "CONCLUIDA" ? new Date() : null,
     },
   });
@@ -223,6 +234,7 @@ export async function atualizarSubEtapa(formData: FormData) {
   const id = String(formData.get("id"));
   const d = lerSubEtapa(formData);
   const projetoId = String(formData.get("projetoId"));
+  await profissionalOpcionalDaOrg(d.responsavelProfId, s.organizacaoId);
   const status = d.status ?? "PENDENTE";
   await prisma.subEtapa.updateMany({
     where: { id, organizacaoId: s.organizacaoId },
@@ -231,6 +243,7 @@ export async function atualizarSubEtapa(formData: FormData) {
       descricao: d.descricao,
       status,
       ordem: d.ordem ?? 0,
+      responsavelProfId: d.responsavelProfId || null,
       concluidaEm: status === "CONCLUIDA" ? new Date() : null,
     },
   });
