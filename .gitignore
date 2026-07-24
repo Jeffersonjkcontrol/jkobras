@@ -26,3 +26,6 @@ next-env.d.ts
 # uploads enviados (fotos de RDO, plantas)
 /public/uploads/*
 !/public/uploads/.gitkeep
+
+# atalhos locais do Windows (nao versionar)
+*.bat
