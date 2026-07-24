@@ -12,7 +12,7 @@ const credenciaisSchema = z.object({
   senha: z.string().min(1),
 });
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
   trustHost: true,
@@ -63,6 +63,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         limparTentativas(chaveEmail);
         limparTentativas(chaveIp);
 
+        // Registra o último acesso (para o painel do super-admin ver atividade).
+        await prisma.user.update({ where: { id: user.id }, data: { ultimoAcessoEm: new Date() } }).catch(() => {});
+
         return {
           id: user.id,
           name: user.nome,
@@ -74,11 +77,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id as string;
         token.papel = user.papel;
         token.organizacaoId = user.organizacaoId ?? null;
+      }
+      // Super-admin entrando/saindo da simulação de um escritório (impersonação).
+      if (trigger === "update" && session && typeof session === "object") {
+        token.impersonandoOrgId = (session as { impersonandoOrgId?: string | null }).impersonandoOrgId ?? null;
       }
       return token;
     },
@@ -87,6 +94,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.papel = token.papel as Papel;
         session.user.organizacaoId = (token.organizacaoId as string | null) ?? null;
+        session.user.impersonandoOrgId = (token.impersonandoOrgId as string | null) ?? null;
       }
       return session;
     },

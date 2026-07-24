@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { exigirGestorDaOrg } from "@/lib/sessao";
 import { FASES_ARQUITETURA } from "@/lib/arquitetura";
+import { checarLimiteProjetos } from "@/lib/limites";
 
 /** Garante que o projeto pertence à organização (retorna o organizacaoId). */
 async function projetoDaOrg(projetoId: string, organizacaoId: string): Promise<string> {
@@ -71,6 +72,7 @@ async function clienteDaOrg(clienteId: string, organizacaoId: string) {
 
 export async function criarProjeto(formData: FormData) {
   const s = await exigirGestorDaOrg();
+  await checarLimiteProjetos(s.organizacaoId);
   const d = lerProjeto(formData);
   await clienteDaOrg(d.clienteId, s.organizacaoId);
   const p = await prisma.projeto.create({ data: { ...dadosBase(d), organizacaoId: s.organizacaoId } });

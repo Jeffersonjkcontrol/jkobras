@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { exigirGestorDaOrg } from "@/lib/sessao";
 import { EXTENSOES_PERMITIDAS, MAX_DOC_BYTES, extensaoDe } from "@/lib/documentos";
+import { checarLimiteArmazenamento } from "@/lib/limites";
 import type { CategoriaDocumento, Disciplina } from "@prisma/client";
 
 const CATEGORIAS_OK: CategoriaDocumento[] = ["PLANTA", "CONTRATO", "LICENCA", "ORCAMENTO", "FOTO", "OUTRO"];
@@ -31,6 +32,7 @@ export async function criarDocumento(formData: FormData) {
   const arquivo = formData.get("arquivo");
   if (!(arquivo instanceof File) || arquivo.size === 0) throw new Error("Selecione um arquivo.");
   if (arquivo.size > MAX_DOC_BYTES) throw new Error("Arquivo acima de 25 MB.");
+  await checarLimiteArmazenamento(s.organizacaoId, arquivo.size);
 
   const ext = extensaoDe(arquivo.name);
   if (!EXTENSOES_PERMITIDAS.includes(ext as (typeof EXTENSOES_PERMITIDAS)[number])) {

@@ -29,10 +29,45 @@ model Organizacao {
   /// Depois desta data o acesso é bloqueado até o super-admin estender ou liberar.
   trialAte DateTime?
 
+  // Plano e limites (definidos pelo super-admin). NULL em limite = ilimitado.
+  plano                 String  @default("Grátis")
+  limiteProjetos        Int?
+  limiteUsuarios        Int?
+  limiteArmazenamentoMB Int?
+
+  // Comercial (só o super-admin vê): cobrança, contato e notas internas.
+  statusPagamento   StatusPagamento @default(EM_DIA)
+  proximoVencimento DateTime?
+  notasInternas     String?
+  contatoNome       String?
+  contatoTelefone   String?
+  contatoEmail      String?
+
   usuarios      User[]
   clientes      Cliente[]
   projetos      Projeto[]
   profissionais Profissional[]
+}
+
+enum StatusPagamento {
+  EM_DIA
+  PENDENTE
+  ISENTO
+}
+
+/// Registro de auditoria das ações do super-admin sobre os escritórios.
+/// Sem FK para a organização — o log deve sobreviver à exclusão do escritório.
+model AdminLog {
+  id            String   @id @default(cuid())
+  acao          String // "impersonou", "redefiniu_senha", "ativou", "definiu_plano"...
+  detalhe       String?
+  organizacaoId String?
+  orgNome       String?
+  atorEmail     String // super-admin que executou
+  criadoEm      DateTime @default(now())
+
+  @@index([organizacaoId])
+  @@index([criadoEm])
 }
 
 enum TipoCliente {
@@ -65,9 +100,10 @@ model User {
   email              String   @unique
   senhaHash          String
   papel              Papel    @default(USUARIO)
-  ativo              Boolean  @default(true)
-  recebeNotificacoes Boolean  @default(false)
-  criadoEm           DateTime @default(now())
+  ativo              Boolean   @default(true)
+  recebeNotificacoes Boolean   @default(false)
+  criadoEm           DateTime  @default(now())
+  ultimoAcessoEm     DateTime?
 
   // Tenant: SUPER_ADMIN (dono da plataforma) não pertence a nenhuma organização.
   organizacaoId String?

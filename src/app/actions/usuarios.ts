@@ -5,6 +5,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { exigirAdminDaOrg } from "@/lib/sessao";
+import { checarLimiteUsuarios } from "@/lib/limites";
 
 const criarSchema = z.object({
   nome: z.string().min(1, "Informe o nome."),
@@ -16,6 +17,7 @@ const criarSchema = z.object({
 
 export async function criarUsuario(formData: FormData) {
   const s = await exigirAdminDaOrg();
+  await checarLimiteUsuarios(s.organizacaoId);
   const d = criarSchema.parse({
     nome: formData.get("nome"),
     email: formData.get("email"),

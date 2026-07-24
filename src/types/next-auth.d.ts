@@ -14,6 +14,7 @@ declare module "next-auth" {
       email?: string | null;
       papel: Papel;
       organizacaoId: string | null;
+      impersonandoOrgId?: string | null;
     };
   }
 }
@@ -23,5 +24,6 @@ declare module "next-auth/jwt" {
     id?: string;
     papel?: Papel;
     organizacaoId?: string | null;
+    impersonandoOrgId?: string | null;
   }
 }
