@@ -64,6 +64,38 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
+/* ---- Impressão (relatórios → "Salvar como PDF" do navegador) ---- */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  /* Botões, links de navegação e afins não vão para o papel */
+  .nao-imprimir {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  /* Não deixa cortar um bloco (item, RDO, tabela) no meio da página */
+  .evitar-quebra {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .quebra-pagina {
+    break-before: page;
+    page-break-before: always;
+  }
+  a {
+    text-decoration: none;
+  }
+  /* Garante que as cores de fundo (cabeçalhos de tabela) saiam na impressão */
+  .imprimir-cores {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 /* Frappe Gantt dark-mode friendly overrides */
 .gantt .bar-progress { fill: var(--primary); }
 .gantt .bar { fill: var(--surface-muted); stroke: var(--border); }

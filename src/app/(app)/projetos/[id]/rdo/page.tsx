@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { Plus, Camera, CloudSun, ClipboardList } from "lucide-react";
+import Link from "next/link";
+import { Plus, Camera, CloudSun, ClipboardList, FileText } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { sessaoOrg } from "@/lib/sessao";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,12 +41,20 @@ export default async function ProjetoRDOPage({ params }: { params: Promise<{ id:
         <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <ClipboardList className="h-5 w-5 text-primary" /> Diário de Obra (RDO)
         </h2>
-        <Modal
-          title="Novo RDO"
-          trigger={<span className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"><Plus className="h-4 w-4" /> Novo RDO</span>}
-        >
-          <RDOForm action={criarRDO} projetoId={projeto.id} />
-        </Modal>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/relatorios/rdo/${projeto.id}`}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-surface px-4 text-sm font-medium hover:bg-surface-muted"
+          >
+            <FileText className="h-4 w-4" /> Relatório do período
+          </Link>
+          <Modal
+            title="Novo RDO"
+            trigger={<span className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"><Plus className="h-4 w-4" /> Novo RDO</span>}
+          >
+            <RDOForm action={criarRDO} projetoId={projeto.id} />
+          </Modal>
+        </div>
       </div>
 
       {projeto.diarios.length === 0 ? (

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Pencil, CalendarClock } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, CalendarClock, FileText } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { sessaoOrg } from "@/lib/sessao";
 import { podeEditar } from "@/lib/permissoes";
@@ -62,8 +62,14 @@ export default async function OrcamentoDetalhePage({ params }: { params: Promise
             </p>
           )}
         </div>
-        {editavel && (
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/relatorios/orcamento/${orcamento.id}`}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-surface px-4 text-sm font-medium hover:bg-surface-muted"
+          >
+            <FileText className="h-4 w-4" /> Proposta / PDF
+          </Link>
+          {editavel && (
             <form action={alterarStatusOrcamento} className="flex items-center gap-1">
               <input type="hidden" name="id" value={orcamento.id} />
               <Select name="status" defaultValue={orcamento.status} className="h-10 w-40">
@@ -73,16 +79,20 @@ export default async function OrcamentoDetalhePage({ params }: { params: Promise
               </Select>
               <Button type="submit" variant="outline" size="sm">Atualizar</Button>
             </form>
+          )}
+          {editavel && (
             <Modal title="Editar orçamento" trigger={<span className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-surface px-4 text-sm font-medium hover:bg-surface-muted"><Pencil className="h-4 w-4" /> Editar</span>}>
               <OrcamentoForm action={atualizarOrcamento} orcamento={orcamento} projetoId={id} />
             </Modal>
+          )}
+          {editavel && (
             <form action={excluirOrcamento}>
               <input type="hidden" name="id" value={orcamento.id} />
               <input type="hidden" name="projetoId" value={id} />
               <ConfirmSubmit confirmacao="Excluir este orçamento e seus itens?" />
             </form>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Itens */}

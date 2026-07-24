@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Pencil, Contact } from "lucide-react";
+import { ArrowLeft, Pencil, Contact, FileText } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { sessaoOrg } from "@/lib/sessao";
 import { podeEditar } from "@/lib/permissoes";
@@ -59,8 +59,14 @@ export default async function ProjetoLayout({
           </p>
           {projeto.descricao && <p className="mt-1 text-sm text-muted">{projeto.descricao}</p>}
         </div>
-        {editavel && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/relatorios/projeto/${projeto.id}`}
+            className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-surface px-4 text-sm font-medium hover:bg-surface-muted"
+          >
+            <FileText className="h-4 w-4" /> Relatório
+          </Link>
+          {editavel && (
             <Modal
               title="Editar projeto"
               trigger={
@@ -71,12 +77,14 @@ export default async function ProjetoLayout({
             >
               <ProjetoForm action={atualizarProjeto} projeto={projeto} clientes={clientes} responsaveis={responsaveis} />
             </Modal>
+          )}
+          {editavel && (
             <form action={excluirProjeto}>
               <input type="hidden" name="id" value={projeto.id} />
               <ConfirmSubmit confirmacao="Excluir este projeto e tudo dele (etapas, RDOs, orçamentos, financeiro, documentos)?" />
             </form>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <ProjetoTabs id={projeto.id} />
