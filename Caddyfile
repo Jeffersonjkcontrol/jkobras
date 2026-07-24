@@ -1,8 +1,33 @@
-# HTTPS automatico (Let's Encrypt) para o JK Obras.
+# HTTPS automatico (Let's Encrypt) + hardening para o JK Obras.
 {
 	email jefferson.piccirillo@jkcontrol.com.br
+	servers {
+		# Confia apenas no proprio Caddy como proxy; nao aceita X-Forwarded-* de fora.
+		trusted_proxies static private_ranges
+	}
 }
 
 jkobras.duckdns.org {
-	reverse_proxy app:3000
+	encode gzip zstd
+
+	# Cabecalhos de seguranca
+	header {
+		# Forca HTTPS por 1 ano (inclui subdominios)
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Impede o navegador de "adivinhar" tipos de conteudo
+		X-Content-Type-Options "nosniff"
+		# Bloqueia embutir o site em iframes de terceiros (clickjacking)
+		X-Frame-Options "SAMEORIGIN"
+		# Nao vaza a URL completa como referer para outros sites
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Limita APIs sensiveis do navegador
+		Permissions-Policy "camera=(self), geolocation=(), microphone=()"
+		# Nao anuncia o servidor
+		-Server
+	}
+
+	reverse_proxy app:3000 {
+		# IP real do cliente para o limitador anti-brute-force da aplicacao
+		header_up X-Real-IP {remote_host}
+	}
 }

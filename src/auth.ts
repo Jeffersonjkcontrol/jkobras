@@ -26,8 +26,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = credenciaisSchema.safeParse(credenciais);
         if (!parsed.success) return null;
 
+        // IP do cliente vindo do proxy CONFIÁVEL (Caddy define X-Real-IP com o
+        // peer real). Não usamos o 1º item do X-Forwarded-For porque o cliente
+        // pode forjá-lo e furar o limite por IP. Fallback: último salto do XFF.
+        const realIp = request?.headers?.get("x-real-ip")?.trim();
         const fwd = request?.headers?.get("x-forwarded-for") ?? "";
-        const ip = fwd.split(",")[0].trim() || "desconhecido";
+        const xffUltimo = fwd ? fwd.split(",").pop()!.trim() : "";
+        const ip = realIp || xffUltimo || "desconhecido";
         const chaveEmail = `email:${parsed.data.email.toLowerCase()}`;
         const chaveIp = `ip:${ip}`;
         if (estaBloqueado(chaveEmail) || estaBloqueado(chaveIp)) return null;
