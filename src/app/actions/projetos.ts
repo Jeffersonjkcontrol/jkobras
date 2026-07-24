@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { exigirGestorDaOrg } from "@/lib/sessao";
+import { FASES_ARQUITETURA } from "@/lib/arquitetura";
 
 /** Garante que o projeto pertence à organização (retorna o organizacaoId). */
 async function projetoDaOrg(projetoId: string, organizacaoId: string): Promise<string> {
@@ -165,6 +166,39 @@ export async function excluirEtapa(formData: FormData) {
   const id = String(formData.get("id"));
   const projetoId = String(formData.get("projetoId"));
   await prisma.etapaProjeto.deleteMany({ where: { id, organizacaoId: s.organizacaoId } });
+  revalidatePath(`/projetos/${projetoId}`);
+}
+
+/** Cria o cronograma padrão de um projeto de arquitetura (NBR 13532),
+ *  encadeando as fases a partir do início previsto do projeto. */
+export async function aplicarFasesArquitetura(formData: FormData) {
+  const s = await exigirGestorDaOrg();
+  const projetoId = String(formData.get("projetoId"));
+  const projeto = await prisma.projeto.findFirst({
+    where: { id: projetoId, organizacaoId: s.organizacaoId },
+    select: { id: true, dataInicioPrev: true, _count: { select: { etapas: true } } },
+  });
+  if (!projeto) throw new Error("Projeto não encontrado.");
+
+  let ordem = projeto._count.etapas;
+  let cursor = new Date(projeto.dataInicioPrev);
+  for (const fase of FASES_ARQUITETURA) {
+    const inicio = new Date(cursor);
+    const fim = new Date(cursor);
+    fim.setDate(fim.getDate() + fase.dias);
+    await prisma.etapaProjeto.create({
+      data: {
+        organizacaoId: s.organizacaoId,
+        projetoId,
+        nome: fase.nome,
+        inicioPrev: inicio,
+        fimPrev: fim,
+        progresso: 0,
+        ordem: ++ordem,
+      },
+    });
+    cursor = new Date(fim);
+  }
   revalidatePath(`/projetos/${projetoId}`);
 }
 

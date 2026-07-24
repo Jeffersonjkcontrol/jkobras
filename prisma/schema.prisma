@@ -25,6 +25,10 @@ model Organizacao {
   ativa    Boolean  @default(true)
   criadoEm DateTime @default(now())
 
+  /// Fim do período de teste (demo). NULL = conta permanente, sem prazo.
+  /// Depois desta data o acesso é bloqueado até o super-admin estender ou liberar.
+  trialAte DateTime?
+
   usuarios      User[]
   clientes      Cliente[]
   projetos      Projeto[]
@@ -69,9 +73,11 @@ model User {
   organizacaoId String?
   organizacao   Organizacao? @relation(fields: [organizacaoId], references: [id], onDelete: Cascade)
 
-  projetosResponsavel Projeto[]    @relation("ProjetoResp")
-  rdosCriados         DiarioObra[] @relation("RDOCriados")
-  docsEnviados        Documento[]  @relation("DocEnviados")
+  projetosResponsavel Projeto[]          @relation("ProjetoResp")
+  rdosCriados         DiarioObra[]       @relation("RDOCriados")
+  docsEnviados        Documento[]        @relation("DocEnviados")
+  aprovacoesResp      Aprovacao[]        @relation("AprovacaoResp")
+  horasApontadas      ApontamentoHoras[] @relation("HorasUser")
 
   @@index([organizacaoId])
 }
@@ -125,6 +131,8 @@ model Projeto {
   documentos   Documento[]
   alocacoes    AlocacaoProjeto[]
   tarefasEquipe TarefaProfissional[]
+  aprovacoes   Aprovacao[]
+  horas        ApontamentoHoras[]
 
   @@index([clienteId])
   @@index([organizacaoId])
@@ -146,6 +154,7 @@ model EtapaProjeto {
   projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
 
   subEtapas SubEtapa[]
+  horas     ApontamentoHoras[]
 
   @@index([organizacaoId])
 }
@@ -310,6 +319,19 @@ enum CategoriaDocumento {
 }
 
 /// Arquivo anexado a um projeto (planta, contrato, licença...). Guardado em /public/uploads.
+/// Disciplina do projeto (usada nas plantas, p/ compatibilização).
+enum Disciplina {
+  ARQUITETONICO
+  ESTRUTURAL
+  ELETRICO
+  HIDRAULICO
+  CLIMATIZACAO
+  INCENDIO
+  PAISAGISMO
+  INTERIORES
+  OUTRO
+}
+
 model Documento {
   id        String             @id @default(cuid())
   nome      String
@@ -318,6 +340,12 @@ model Documento {
   mimeType  String
   tamanho   Int // bytes
   criadoEm  DateTime           @default(now())
+
+  // Controle de revisão de pranchas: documentos com a mesma "prancha" são
+  // revisões do mesmo desenho; a mais recente é a vigente.
+  disciplina Disciplina @default(OUTRO)
+  prancha    String? // ex.: "Planta baixa — Térreo"
+  revisao    String? // ex.: R00, R01, R02
 
   organizacaoId String
 
@@ -394,6 +422,68 @@ model AlocacaoProjeto {
   projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
 
   @@unique([profissionalId, projetoId])
+  @@index([organizacaoId])
+  @@index([projetoId])
+}
+
+// ---------------------------------------------------------------------------
+// Arquitetura: aprovações/licenças e apontamento de horas (honorários)
+// ---------------------------------------------------------------------------
+
+enum StatusAprovacao {
+  PREPARACAO
+  PROTOCOLADO
+  EM_ANALISE
+  EXIGENCIA
+  APROVADO
+  INDEFERIDO
+}
+
+/// Protocolo em órgão (prefeitura, bombeiros, concessionária, CAU/CREA).
+model Aprovacao {
+  id              String          @id @default(cuid())
+  orgao           String // Prefeitura, Corpo de Bombeiros, CAU/CREA...
+  descricao       String // "Aprovação do projeto legal"
+  numeroProtocolo String?
+  dataProtocolo   DateTime?
+  prazo           DateTime? // prazo p/ resposta/exigência
+  status          StatusAprovacao @default(PREPARACAO)
+  observacoes     String?
+  criadoEm        DateTime        @default(now())
+
+  organizacaoId String
+
+  projetoId String
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  responsavelId String?
+  responsavel   User?   @relation("AprovacaoResp", fields: [responsavelId], references: [id], onDelete: SetNull)
+
+  @@index([organizacaoId])
+  @@index([projetoId])
+}
+
+/// Hora de projeto lançada por alguém do escritório (base dos honorários).
+model ApontamentoHoras {
+  id        String   @id @default(cuid())
+  data      DateTime
+  horas     Float
+  descricao String?
+  valorHora Float?
+  criadoEm  DateTime @default(now())
+
+  organizacaoId String
+
+  projetoId String
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation("HorasUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  // Fase do projeto (etapa do cronograma) a que a hora pertence.
+  etapaId String?
+  etapa   EtapaProjeto? @relation(fields: [etapaId], references: [id], onDelete: SetNull)
+
   @@index([organizacaoId])
   @@index([projetoId])
 }

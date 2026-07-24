@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Papel } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { estaBloqueado, registrarFalha, limparTentativas } from "@/lib/rate-limit";
+import { orgBloqueada } from "@/lib/tenant";
 
 const credenciaisSchema = z.object({
   email: z.string().email(),
@@ -33,15 +34,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email: parsed.data.email },
-          include: { organizacao: { select: { ativa: true } } },
+          include: { organizacao: { select: { ativa: true, trialAte: true } } },
         });
         if (!user || !user.ativo) {
           registrarFalha(chaveEmail);
           registrarFalha(chaveIp);
           return null;
         }
-        // Bloqueia login se o escritório (tenant) estiver desativado.
-        if (user.organizacao && !user.organizacao.ativa) {
+        // Bloqueia login se o escritório estiver desativado ou com o teste vencido.
+        if (user.organizacao && orgBloqueada(user.organizacao)) {
           registrarFalha(chaveEmail);
           registrarFalha(chaveIp);
           return null;

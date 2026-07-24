@@ -7,9 +7,20 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { exigirGestorDaOrg } from "@/lib/sessao";
 import { EXTENSOES_PERMITIDAS, MAX_DOC_BYTES, extensaoDe } from "@/lib/documentos";
-import type { CategoriaDocumento } from "@prisma/client";
+import type { CategoriaDocumento, Disciplina } from "@prisma/client";
 
 const CATEGORIAS_OK: CategoriaDocumento[] = ["PLANTA", "CONTRATO", "LICENCA", "ORCAMENTO", "FOTO", "OUTRO"];
+const DISCIPLINAS_OK: Disciplina[] = [
+  "ARQUITETONICO",
+  "ESTRUTURAL",
+  "ELETRICO",
+  "HIDRAULICO",
+  "CLIMATIZACAO",
+  "INCENDIO",
+  "PAISAGISMO",
+  "INTERIORES",
+  "OUTRO",
+];
 
 export async function criarDocumento(formData: FormData) {
   const s = await exigirGestorDaOrg();
@@ -31,6 +42,12 @@ export async function criarDocumento(formData: FormData) {
   const nomeInformado = String(formData.get("nome") || "").trim();
   const nome = nomeInformado || arquivo.name;
 
+  // Controle de revisão (plantas): prancha agrupa as revisões do mesmo desenho.
+  const disciplinaRaw = String(formData.get("disciplina") || "OUTRO") as Disciplina;
+  const disciplina = DISCIPLINAS_OK.includes(disciplinaRaw) ? disciplinaRaw : "OUTRO";
+  const prancha = String(formData.get("prancha") || "").trim() || null;
+  const revisao = prancha ? String(formData.get("revisao") || "").trim() || "R00" : null;
+
   const dir = path.join(process.cwd(), "public", "uploads");
   await mkdir(dir, { recursive: true });
   const nomeArquivo = `${randomUUID()}.${ext}`;
@@ -42,6 +59,9 @@ export async function criarDocumento(formData: FormData) {
       projetoId,
       nome,
       categoria,
+      disciplina,
+      prancha,
+      revisao,
       url: `/uploads/${nomeArquivo}`,
       mimeType: arquivo.type || `application/${ext}`,
       tamanho: arquivo.size,

@@ -1,5 +1,7 @@
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { podeEditar, ehAdmin } from "@/lib/permissoes";
+import { orgBloqueada } from "@/lib/tenant";
 import type { Papel } from "@prisma/client";
 
 export type SessaoOrg = { userId: string; papel: Papel; organizacaoId: string; nome: string };
@@ -18,10 +20,21 @@ export async function sessaoOrg(): Promise<SessaoOrg> {
   };
 }
 
+/** Recusa qualquer escrita se o escritório estiver desativado ou com o teste vencido.
+ *  (A leitura é barrada antes, no layout, que redireciona para /expirado.) */
+async function exigirOrgLiberada(organizacaoId: string): Promise<void> {
+  const org = await prisma.organizacao.findUnique({
+    where: { id: organizacaoId },
+    select: { ativa: true, trialAte: true },
+  });
+  if (orgBloqueada(org)) throw new Error("Escritório sem acesso ativo (período de teste encerrado ou conta desativada).");
+}
+
 /** Exige sessão de tenant + permissão de escrita (ADMIN/GESTOR). Retorna a sessão. */
 export async function exigirGestorDaOrg(): Promise<SessaoOrg> {
   const s = await sessaoOrg();
   if (!podeEditar(s.papel)) throw new Error("Sem permissão.");
+  await exigirOrgLiberada(s.organizacaoId);
   return s;
 }
 
@@ -29,5 +42,6 @@ export async function exigirGestorDaOrg(): Promise<SessaoOrg> {
 export async function exigirAdminDaOrg(): Promise<SessaoOrg> {
   const s = await sessaoOrg();
   if (!ehAdmin(s.papel)) throw new Error("Sem permissão.");
+  await exigirOrgLiberada(s.organizacaoId);
   return s;
 }

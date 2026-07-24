@@ -8,6 +8,7 @@ import {
   User2,
   CheckCircle2,
   Circle,
+  Stamp,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { sessaoOrg } from "@/lib/sessao";
@@ -19,6 +20,7 @@ import { ConfirmSubmit } from "@/components/confirm-submit";
 import { Gantt } from "@/components/gantt";
 import { EtapaForm } from "@/components/forms/etapa-form";
 import { SubEtapaForm } from "@/components/forms/subetapa-form";
+import { Button } from "@/components/ui/button";
 import {
   criarEtapa,
   atualizarEtapa,
@@ -27,6 +29,7 @@ import {
   atualizarSubEtapa,
   alternarSubEtapa,
   excluirSubEtapa,
+  aplicarFasesArquitetura,
 } from "@/app/actions/projetos";
 import { formatarMoeda, formatarData } from "@/lib/utils";
 import {
@@ -102,7 +105,20 @@ export default async function ProjetoVisaoGeralPage({ params }: { params: Promis
       </div>
 
       {projeto.etapas.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border bg-surface p-6 text-center text-sm text-muted">Nenhuma etapa cadastrada.</p>
+        <div className="rounded-xl border border-dashed border-border bg-surface p-6 text-center">
+          <p className="text-sm text-muted">Nenhuma etapa cadastrada.</p>
+          {editavel && (
+            <form action={aplicarFasesArquitetura} className="mt-3">
+              <input type="hidden" name="projetoId" value={projeto.id} />
+              <Button type="submit" variant="outline">
+                <Stamp className="mr-2 h-4 w-4" /> Aplicar fases de arquitetura (NBR 13532)
+              </Button>
+              <p className="mt-2 text-xs text-muted">
+                Cria Levantamento, Estudo preliminar, Anteprojeto, Projeto legal, Executivo e Detalhamento, já encadeados a partir do início previsto.
+              </p>
+            </form>
+          )}
+        </div>
       ) : (
         <div className="space-y-4">
           {projeto.etapas.map((e) => {

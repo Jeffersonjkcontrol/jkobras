@@ -5,26 +5,82 @@ import { Input, Label, Select } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useModalClose } from "@/components/ui/modal";
 import { CATEGORIAS_DOCUMENTO, CATEGORIA_DOCUMENTO_LABEL } from "@/lib/documentos";
+import { DISCIPLINAS, DISCIPLINA_LABEL } from "@/lib/arquitetura";
 
-export function DocumentoForm({ action, projetoId }: { action: (formData: FormData) => void; projetoId: string }) {
+export function DocumentoForm({
+  action,
+  projetoId,
+  prancha,
+  revisaoSugerida,
+  disciplina,
+}: {
+  action: (formData: FormData) => void;
+  projetoId: string;
+  /** Preenchido quando é "nova revisão" de uma prancha existente. */
+  prancha?: string;
+  revisaoSugerida?: string;
+  disciplina?: string;
+}) {
   const close = useModalClose();
+  const novaRevisao = !!prancha;
   return (
     <form action={action} onSubmit={() => setTimeout(close, 400)} className="space-y-4">
       <input type="hidden" name="projetoId" value={projetoId} />
 
-      <div>
-        <Label htmlFor="categoria">Categoria</Label>
-        <Select id="categoria" name="categoria" defaultValue="PLANTA">
-          {CATEGORIAS_DOCUMENTO.map((c) => (
-            <option key={c} value={c}>{CATEGORIA_DOCUMENTO_LABEL[c]}</option>
-          ))}
-        </Select>
-      </div>
+      {novaRevisao ? (
+        <div className="rounded-lg border border-border bg-surface-muted/40 p-3 text-sm">
+          <p className="font-medium text-foreground">Nova revisão de:</p>
+          <p className="text-muted">{prancha}</p>
+          <input type="hidden" name="prancha" value={prancha} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="categoria">Categoria</Label>
+            <Select id="categoria" name="categoria" defaultValue="PLANTA">
+              {CATEGORIAS_DOCUMENTO.map((c) => (
+                <option key={c} value={c}>{CATEGORIA_DOCUMENTO_LABEL[c]}</option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="disciplina">Disciplina</Label>
+            <Select id="disciplina" name="disciplina" defaultValue={disciplina ?? "ARQUITETONICO"}>
+              {DISCIPLINAS.map((d) => (
+                <option key={d} value={d}>{DISCIPLINA_LABEL[d]}</option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      )}
 
-      <div>
-        <Label htmlFor="nome">Nome (opcional)</Label>
-        <Input id="nome" name="nome" placeholder="Ex.: Planta baixa — pavimento térreo" />
-        <p className="mt-1 text-xs text-muted">Se vazio, usa o nome do arquivo.</p>
+      {novaRevisao && (
+        <>
+          <input type="hidden" name="categoria" value="PLANTA" />
+          <input type="hidden" name="disciplina" value={disciplina ?? "ARQUITETONICO"} />
+        </>
+      )}
+
+      {!novaRevisao && (
+        <div>
+          <Label htmlFor="prancha">Prancha (para controle de revisão)</Label>
+          <Input id="prancha" name="prancha" placeholder="Ex.: Planta baixa — Térreo" />
+          <p className="mt-1 text-xs text-muted">
+            Preencha para versionar o desenho. Enviando outro arquivo com a mesma prancha, ele vira a revisão seguinte.
+            Deixe vazio para um documento avulso (contrato, licença…).
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="revisao">Revisão</Label>
+          <Input id="revisao" name="revisao" defaultValue={revisaoSugerida ?? "R00"} placeholder="R00" />
+        </div>
+        <div>
+          <Label htmlFor="nome">Nome (opcional)</Label>
+          <Input id="nome" name="nome" placeholder="Se vazio, usa o nome do arquivo" />
+        </div>
       </div>
 
       <div>

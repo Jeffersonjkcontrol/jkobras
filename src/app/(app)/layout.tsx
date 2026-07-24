@@ -6,6 +6,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
 import { PAPEL_LABEL, ehSuperAdmin } from "@/lib/permissoes";
+import { orgBloqueada, diasRestantesTrial } from "@/lib/tenant";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -16,9 +17,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { name, papel } = session.user;
   const org = await prisma.organizacao.findUnique({
     where: { id: session.user.organizacaoId },
-    select: { nome: true, logoData: true },
+    select: { nome: true, logoData: true, ativa: true, trialAte: true },
   });
+  // Conta desativada ou período de teste vencido: nenhuma tela do tenant é acessível.
+  if (orgBloqueada(org)) redirect("/expirado");
+
   const nome = org?.nome ?? "Obras Gestão";
+  const diasTrial = diasRestantesTrial(org?.trialAte);
 
   return (
     <div className="flex min-h-screen">
@@ -44,6 +49,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="border-b border-border bg-surface lg:hidden">
           <Sidebar papel={papel} />
         </div>
+
+        {diasTrial !== null && diasTrial <= 10 && (
+          <div className="border-b border-warning/40 bg-warning/10 px-4 py-2 text-center text-sm text-foreground sm:px-6">
+            {diasTrial <= 0
+              ? "Seu período de teste termina hoje."
+              : `Período de teste: faltam ${diasTrial} dia(s).`}{" "}
+            Entre em contato para liberar o acesso definitivo.
+          </div>
+        )}
 
         <main className="flex-1 p-4 sm:p-6">{children}</main>
       </div>

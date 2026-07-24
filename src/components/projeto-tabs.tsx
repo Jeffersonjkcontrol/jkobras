@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutList, Users, Calculator, Wallet, FolderOpen, ClipboardList, type LucideIcon } from "lucide-react";
+import { LayoutList, Users, Calculator, Wallet, FolderOpen, ClipboardList, Stamp, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Aba = { href: string; label: string; icon: LucideIcon; exato?: boolean };
@@ -12,6 +12,7 @@ export function ProjetoTabs({ id }: { id: string }) {
   const base = `/projetos/${id}`;
   const abas: Aba[] = [
     { href: base, label: "Visão geral", icon: LayoutList, exato: true },
+    { href: `${base}/arquitetura`, label: "Arquitetura", icon: Stamp },
     { href: `${base}/equipe`, label: "Equipe", icon: Users },
     { href: `${base}/orcamentos`, label: "Orçamentos", icon: Calculator },
     { href: `${base}/financeiro`, label: "Financeiro", icon: Wallet },
