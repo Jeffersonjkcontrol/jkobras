@@ -13,18 +13,24 @@ export function formatarMoeda(valor: number | null | undefined): string {
   }).format(valor);
 }
 
+/** Data de CALENDÁRIO (prazo, data de projeto). Essas datas são gravadas como
+ *  meia-noite UTC, então formatamos em UTC para mostrar o dia que o usuário
+ *  escolheu — independente do fuso onde o servidor roda. */
 export function formatarData(data: Date | string | null | undefined): string {
   if (!data) return "—";
   const d = typeof data === "string" ? new Date(data) : data;
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(d);
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "UTC" }).format(d);
 }
 
+/** Data + hora de um INSTANTE real (criado em, último acesso, log). Sempre no
+ *  fuso de Brasília, pois o servidor de produção roda em UTC. */
 export function formatarDataHora(data: Date | string | null | undefined): string {
   if (!data) return "—";
   const d = typeof data === "string" ? new Date(data) : data;
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
   }).format(d);
 }
 
