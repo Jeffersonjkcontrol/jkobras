@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Conta desativada ou período de teste vencido: nenhuma tela do tenant é acessível.
   if (orgBloqueada(org)) redirect("/expirado");
 
-  const nome = org?.nome ?? "Obras Gestão";
+  const nome = org?.nome ?? "JK Obras";
   const diasTrial = diasRestantesTrial(org?.trialAte);
 
   return (

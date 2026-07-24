@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 // Servido em /manifest.webmanifest (App Router). Torna o app instalável no celular.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Obras Gestão",
-    short_name: "Obras",
+    name: "JK Obras",
+    short_name: "JK Obras",
     description: "Gestão de obras e arquitetura — projetos, cronograma, orçamentos, financeiro e diário de obra.",
     start_url: "/",
     scope: "/",

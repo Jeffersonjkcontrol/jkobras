@@ -6,11 +6,11 @@ import { PwaRegister } from "@/components/pwa-register";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Obras Gestão",
+  title: "JK Obras",
   description: "Gestão de obras e arquitetura — projetos, cronograma e diário de obra",
   manifest: "/manifest.webmanifest",
-  applicationName: "Obras Gestão",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Obras Gestão" },
+  applicationName: "JK Obras",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "JK Obras" },
   icons: {
     icon: [
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
