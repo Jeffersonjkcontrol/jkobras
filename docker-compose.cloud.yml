@@ -1,0 +1,78 @@
+# Deploy em NUVEM (VPS) do JK Obras — HTTPS via Caddy, segredos via .env.
+#
+# No servidor (/opt/jkobras):
+#   1) criar .env com POSTGRES_PASSWORD e AUTH_SECRET (fora do git)
+#   2) docker compose -f docker-compose.cloud.yml build migrate
+#      docker compose -f docker-compose.cloud.yml build app
+#   3) docker compose -f docker-compose.cloud.yml up -d
+#
+# O Postgres NAO e exposto na internet; so o Caddy publica 80/443.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jkobras
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: jkobras
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jkobras -d jkobras"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  # One-shot: aplica migracoes e sai (imagem builder tem o CLI completo do Prisma).
+  migrate:
+    build:
+      context: .
+      target: builder
+    command: ["sh", "-lc", "npx prisma migrate deploy"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://jkobras:${POSTGRES_PASSWORD}@db:5432/jkobras?schema=public"
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: "postgresql://jkobras:${POSTGRES_PASSWORD}@db:5432/jkobras?schema=public"
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+    volumes:
+      - uploads:/app/public/uploads
+    expose:
+      - "3000" # apenas interno (Caddy alcanca por app:3000); nao publica na internet
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  db_data:
+  uploads:
+  caddy_data:
+  caddy_config:

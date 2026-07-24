@@ -1,0 +1,8 @@
+# HTTPS automatico (Let's Encrypt) para o JK Obras.
+{
+	email jefferson.piccirillo@jkcontrol.com.br
+}
+
+jkobras.duckdns.org {
+	reverse_proxy app:3000
+}
