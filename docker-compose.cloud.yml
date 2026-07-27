@@ -1,4 +1,4 @@
-# Deploy em NUVEM (VPS) do JK Obras — HTTPS via Caddy, segredos via .env.
+# Deploy em NUVEM (VPS) do ArqObra — HTTPS via Caddy, segredos via .env.
 #
 # No servidor (/opt/jkobras):
 #   1) criar .env com POSTGRES_PASSWORD e AUTH_SECRET (fora do git)

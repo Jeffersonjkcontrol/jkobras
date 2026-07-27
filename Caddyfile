@@ -3,11 +3,18 @@
 	email jefferson.piccirillo@jkcontrol.com.br
 	servers {
 		# Confia apenas no proprio Caddy como proxy; nao aceita X-Forwarded-* de fora.
+		#
+		# ATENCAO: se um dia o proxy da Cloudflare (nuvem laranja) for ligado, e
+		# OBRIGATORIO incluir aqui as faixas publicas da Cloudflare. Sem isso o Caddy
+		# passa a ver o IP da Cloudflare para TODOS os visitantes e, como o limitador
+		# anti-brute-force (src/lib/rate-limit.ts) e chaveado por IP, 5 senhas erradas
+		# de qualquer pessoa bloqueariam o login de todo mundo.
 		trusted_proxies static private_ranges
 	}
 }
 
-arqobra.duckdns.org {
+# Configuracao comum dos hosts que servem a aplicacao.
+(app) {
 	encode gzip zstd
 
 	# Cabecalhos de seguranca
@@ -27,7 +34,24 @@ arqobra.duckdns.org {
 	}
 
 	reverse_proxy app:3000 {
-		# IP real do cliente para o limitador anti-brute-force da aplicacao
-		header_up X-Real-IP {remote_host}
+		# IP real do cliente para o limitador anti-brute-force da aplicacao.
+		# {client_ip} respeita trusted_proxies (hoje equivale ao peer direto, e
+		# continua correto caso um proxy confiavel seja adicionado na frente).
+		header_up X-Real-IP {client_ip}
 	}
+}
+
+# Endereco principal (canonico).
+arqobra.com {
+	import app
+}
+
+# www redireciona para o apex.
+www.arqobra.com {
+	redir https://arqobra.com{uri} permanent
+}
+
+# Endereco antigo (DuckDNS) — mantido so durante a virada; remover em seguida.
+arqobra.duckdns.org {
+	import app
 }
