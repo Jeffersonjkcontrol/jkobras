@@ -50,8 +50,3 @@ arqobra.com {
 www.arqobra.com {
 	redir https://arqobra.com{uri} permanent
 }
-
-# Endereco antigo (DuckDNS) — mantido so durante a virada; remover em seguida.
-arqobra.duckdns.org {
-	import app
-}
