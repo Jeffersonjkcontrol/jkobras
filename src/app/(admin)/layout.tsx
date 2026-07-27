@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { auth } from "@/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/user-menu";
+import { AdminNav } from "@/components/admin-nav";
 import { ehSuperAdmin } from "@/lib/permissoes";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           <span className="font-bold text-foreground">JK Obras · Painel</span>
         </div>
+        <div className="hidden sm:block"><AdminNav /></div>
         <div className="flex items-center gap-3">
           <ThemeToggle />
           <UserMenu nome={session.user.name ?? "Super Admin"} papelLabel="Super Admin" />

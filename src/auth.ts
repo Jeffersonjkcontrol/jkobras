@@ -39,7 +39,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
 
         const user = await prisma.user.findUnique({
           where: { email: parsed.data.email },
-          include: { organizacao: { select: { ativa: true, trialAte: true } } },
+          include: { organizacao: { select: { ativa: true, trialAte: true, nome: true } } },
         });
         if (!user || !user.ativo) {
           registrarFalha(chaveEmail);
@@ -63,8 +63,20 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         limparTentativas(chaveEmail);
         limparTentativas(chaveIp);
 
-        // Registra o último acesso (para o painel do super-admin ver atividade).
+        // Registra o último acesso + histórico (painel de uso do super-admin).
         await prisma.user.update({ where: { id: user.id }, data: { ultimoAcessoEm: new Date() } }).catch(() => {});
+        await prisma.acessoLog
+          .create({
+            data: {
+              userId: user.id,
+              userNome: user.nome,
+              userEmail: user.email,
+              organizacaoId: user.organizacaoId ?? null,
+              orgNome: user.organizacao?.nome ?? null,
+              ip: ip === "desconhecido" ? null : ip,
+            },
+          })
+          .catch(() => {});
 
         return {
           id: user.id,

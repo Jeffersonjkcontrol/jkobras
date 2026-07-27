@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { auth, unstable_update } from "@/auth";
 import { ehSuperAdmin } from "@/lib/permissoes";
+import { presetPorNome } from "@/lib/planos";
 import type { StatusPagamento } from "@prisma/client";
 
 /** Garante super-admin e devolve o e-mail (para registrar no log). */
@@ -120,11 +121,34 @@ export async function salvarPlano(formData: FormData) {
   revalidatePath("/admin");
 }
 
+/** Aplica um plano pré-definido (preço + limites de uma vez). */
+export async function aplicarPreset(formData: FormData) {
+  const ator = await exigirSuperAdmin();
+  const id = String(formData.get("id"));
+  const preset = presetPorNome(String(formData.get("preset")));
+  if (!preset) throw new Error("Plano inválido.");
+  const org = await prisma.organizacao.update({
+    where: { id },
+    data: {
+      plano: preset.nome,
+      precoMensal: preset.precoMensal,
+      limiteProjetos: preset.limiteProjetos,
+      limiteUsuarios: preset.limiteUsuarios,
+      limiteArmazenamentoMB: preset.limiteArmazenamentoMB,
+    },
+    select: { nome: true },
+  });
+  await logAdmin(ator, "aplicou_plano", id, org.nome, `${preset.nome} (R$ ${preset.precoMensal})`);
+  revalidatePath(`/admin/${id}`);
+  revalidatePath("/admin");
+}
+
 // -------------------------------------------------------------- Comercial
 const STATUS_PG: StatusPagamento[] = ["EM_DIA", "PENDENTE", "ISENTO"];
 const comercialSchema = z.object({
   id: z.string().min(1),
   statusPagamento: z.enum(["EM_DIA", "PENDENTE", "ISENTO"]),
+  precoMensal: z.coerce.number().min(0).optional(),
   proximoVencimento: z.string().optional(),
   notasInternas: z.string().optional(),
   contatoNome: z.string().optional(),
@@ -135,9 +159,11 @@ const comercialSchema = z.object({
 export async function salvarComercial(formData: FormData) {
   const ator = await exigirSuperAdmin();
   const status = String(formData.get("statusPagamento") || "EM_DIA") as StatusPagamento;
+  const preco = formData.get("precoMensal");
   const d = comercialSchema.parse({
     id: formData.get("id"),
     statusPagamento: STATUS_PG.includes(status) ? status : "EM_DIA",
+    precoMensal: preco ? Number(preco) : undefined,
     proximoVencimento: (formData.get("proximoVencimento") as string) || undefined,
     notasInternas: (formData.get("notasInternas") as string) || undefined,
     contatoNome: (formData.get("contatoNome") as string) || undefined,
@@ -148,6 +174,7 @@ export async function salvarComercial(formData: FormData) {
     where: { id: d.id },
     data: {
       statusPagamento: d.statusPagamento,
+      precoMensal: d.precoMensal ?? null,
       proximoVencimento: d.proximoVencimento ? new Date(d.proximoVencimento) : null,
       notasInternas: d.notasInternas ?? null,
       contatoNome: d.contatoNome ?? null,

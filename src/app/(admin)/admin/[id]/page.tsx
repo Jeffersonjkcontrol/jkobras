@@ -36,10 +36,12 @@ import {
   salvarComercial,
   entrarComo,
   redefinirSenhaUsuario,
+  aplicarPreset,
 } from "@/app/actions/admin";
-import { formatarData, formatarDataHora } from "@/lib/utils";
+import { formatarData, formatarDataHora, formatarMoeda, cn } from "@/lib/utils";
 import { formatarTamanho } from "@/lib/documentos";
 import { situacaoAcesso } from "@/lib/tenant";
+import { PLANOS_PRESET } from "@/lib/planos";
 
 const PG_LABEL: Record<string, string> = { EM_DIA: "Em dia", PENDENTE: "Pendente", ISENTO: "Isento" };
 const PG_TONE: Record<string, "success" | "warning" | "default"> = { EM_DIA: "success", PENDENTE: "warning", ISENTO: "default" };
@@ -128,6 +130,27 @@ export default async function AdminOrgDetalhePage({ params }: { params: Promise<
         <Card>
           <CardContent>
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted"><Gauge className="h-4 w-4" /> Plano e limites</h2>
+
+            {/* Presets: 1 clique aplica preço + limites */}
+            <div className="mb-4 flex flex-wrap gap-2">
+              {PLANOS_PRESET.map((pl) => (
+                <form key={pl.nome} action={aplicarPreset}>
+                  <input type="hidden" name="id" value={org.id} />
+                  <input type="hidden" name="preset" value={pl.nome} />
+                  <button
+                    type="submit"
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-left transition-colors hover:border-primary",
+                      org.plano === pl.nome ? "border-primary bg-primary/5" : "border-border"
+                    )}
+                  >
+                    <span className="block text-xs font-semibold text-foreground">{pl.nome}</span>
+                    <span className="block text-xs text-muted">{formatarMoeda(pl.precoMensal)}/mês</span>
+                  </button>
+                </form>
+              ))}
+            </div>
+
             <form action={salvarPlano} className="space-y-4">
               <input type="hidden" name="id" value={org.id} />
               <div>
@@ -160,7 +183,7 @@ export default async function AdminOrgDetalhePage({ params }: { params: Promise<
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted"><CreditCard className="h-4 w-4" /> Comercial (interno)</h2>
             <form action={salvarComercial} className="space-y-4">
               <input type="hidden" name="id" value={org.id} />
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <Label htmlFor="statusPagamento">Pagamento</Label>
                   <Select id="statusPagamento" name="statusPagamento" defaultValue={org.statusPagamento}>
@@ -168,6 +191,10 @@ export default async function AdminOrgDetalhePage({ params }: { params: Promise<
                     <option value="PENDENTE">Pendente</option>
                     <option value="ISENTO">Isento</option>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="precoMensal">Valor mensal (R$)</Label>
+                  <Input id="precoMensal" name="precoMensal" type="number" step="0.01" min="0" defaultValue={org.precoMensal ?? ""} placeholder="Ex.: 297" />
                 </div>
                 <div>
                   <Label htmlFor="proximoVencimento">Próximo vencimento</Label>

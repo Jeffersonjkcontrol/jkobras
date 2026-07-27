@@ -37,6 +37,7 @@ model Organizacao {
 
   // Comercial (só o super-admin vê): cobrança, contato e notas internas.
   statusPagamento   StatusPagamento @default(EM_DIA)
+  precoMensal       Float? // valor mensal cobrado deste escritório (base do MRR)
   proximoVencimento DateTime?
   notasInternas     String?
   contatoNome       String?
@@ -53,6 +54,22 @@ enum StatusPagamento {
   EM_DIA
   PENDENTE
   ISENTO
+}
+
+/// Histórico de acessos (logins) dos usuários — para o painel de uso do super-admin.
+/// Denormalizado (nome/e-mail/org) para sobreviver à exclusão de usuário/escritório.
+model AcessoLog {
+  id            String   @id @default(cuid())
+  userId        String?
+  userNome      String
+  userEmail     String
+  organizacaoId String?
+  orgNome       String?
+  ip            String?
+  criadoEm      DateTime @default(now())
+
+  @@index([organizacaoId])
+  @@index([criadoEm])
 }
 
 /// Registro de auditoria das ações do super-admin sobre os escritórios.
