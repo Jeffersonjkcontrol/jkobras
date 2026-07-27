@@ -43,6 +43,9 @@ import { formatarTamanho } from "@/lib/documentos";
 import { situacaoAcesso } from "@/lib/tenant";
 import { PLANOS_PRESET } from "@/lib/planos";
 
+// Consulta o banco a cada acesso — nunca pré-renderizar no build.
+export const dynamic = "force-dynamic";
+
 const PG_LABEL: Record<string, string> = { EM_DIA: "Em dia", PENDENTE: "Pendente", ISENTO: "Isento" };
 const PG_TONE: Record<string, "success" | "warning" | "default"> = { EM_DIA: "success", PENDENTE: "warning", ISENTO: "default" };
 

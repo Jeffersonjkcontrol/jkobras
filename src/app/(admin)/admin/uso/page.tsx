@@ -10,6 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Table, THead, TH, TR, TD } from "@/components/ui/table";
 import { formatarDataHora } from "@/lib/utils";
 
+// Consulta o banco a cada acesso — nunca pré-renderizar no build.
+export const dynamic = "force-dynamic";
+
 type Tone = "default" | "success" | "warning" | "danger";
 
 /** Situação de uso do escritório a partir dos dias desde o último acesso. */
