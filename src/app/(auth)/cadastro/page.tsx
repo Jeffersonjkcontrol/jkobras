@@ -15,7 +15,7 @@ export default async function CadastroPage() {
           <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <HardHat className="h-6 w-6" />
           </div>
-          <h1 className="text-xl font-bold text-foreground">Criar conta — JK Obras</h1>
+          <h1 className="text-xl font-bold text-foreground">Criar conta — ArqObra</h1>
           <p className="text-sm text-muted">Cadastre seu escritório e comece a usar</p>
         </div>
 

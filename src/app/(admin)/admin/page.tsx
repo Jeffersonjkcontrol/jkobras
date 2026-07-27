@@ -33,7 +33,7 @@ export default async function AdminPage() {
     <div>
       <PageHeader
         titulo="Escritórios"
-        descricao="Central de controle da plataforma JK Obras."
+        descricao="Central de controle da plataforma ArqObra."
         acao={
           <Modal
             title="Novo escritório"

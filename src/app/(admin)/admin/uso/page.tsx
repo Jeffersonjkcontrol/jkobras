@@ -57,7 +57,7 @@ export default async function AdminUsoPage() {
 
   return (
     <div>
-      <PageHeader titulo="Uso da plataforma" descricao="Quem está usando o JK Obras, e com que frequência." />
+      <PageHeader titulo="Uso da plataforma" descricao="Quem está usando o ArqObra, e com que frequência." />
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card><CardContent><p className="flex items-center gap-1 text-xs text-muted"><LogIn className="h-3.5 w-3.5" /> Acessos hoje</p><p className="mt-1 text-2xl font-bold">{acessosHoje}</p></CardContent></Card>

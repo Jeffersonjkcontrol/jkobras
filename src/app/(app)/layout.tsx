@@ -31,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { name } = session.user;
   const papelEfetivo = impersonandoOrgId ? "ADMIN" : session.user.papel;
-  const nome = org?.nome ?? "JK Obras";
+  const nome = org?.nome ?? "ArqObra";
   const diasTrial = impersonandoOrgId ? null : diasRestantesTrial(org?.trialAte);
 
   return (

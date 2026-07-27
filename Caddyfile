@@ -1,4 +1,4 @@
-# HTTPS automatico (Let's Encrypt) + hardening para o JK Obras.
+# HTTPS automatico (Let's Encrypt) + hardening para o ArqObra.
 {
 	email jefferson.piccirillo@jkcontrol.com.br
 	servers {
@@ -7,7 +7,7 @@
 	}
 }
 
-jkobras.duckdns.org {
+arqobra.duckdns.org {
 	encode gzip zstd
 
 	# Cabecalhos de seguranca
