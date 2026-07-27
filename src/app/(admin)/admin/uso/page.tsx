@@ -8,7 +8,16 @@ import { PageHeader, EmptyState } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, THead, TH, TR, TD } from "@/components/ui/table";
-import { formatarData, formatarDataHora } from "@/lib/utils";
+import { formatarDataHora } from "@/lib/utils";
+
+type Tone = "default" | "success" | "warning" | "danger";
+
+/** Situação de uso do escritório a partir dos dias desde o último acesso. */
+function situacaoUso(dias: number | null): { label: string; tone: Tone } {
+  if (dias === null) return { label: "Nunca acessou", tone: "default" };
+  if (dias <= 15) return { label: "Ativo", tone: "success" };
+  return { label: `Parado há ${dias}d`, tone: dias > 30 ? "danger" : "warning" };
+}
 
 export default async function AdminUsoPage() {
   const session = await auth();
@@ -41,12 +50,7 @@ export default async function AdminUsoPage() {
         .filter((d): d is Date => !!d)
         .sort((a, b) => b.getTime() - a.getTime())[0];
       const dias = ultimo ? Math.floor((agora.getTime() - ultimo.getTime()) / 86400000) : null;
-      const status =
-        dias === null
-          ? { label: "Nunca acessou", tone: "default" as const }
-          : dias <= 15
-            ? { label: "Ativo", tone: "success" as const }
-            : { label: `Parado há ${dias}d`, tone: (dias > 30 ? "danger" : "warning") as const };
+      const status = situacaoUso(dias);
       return { o, ultimo, acessos7d: acessos7dMap.get(o.id) ?? 0, status };
     })
     .sort((a, b) => (b.ultimo?.getTime() ?? 0) - (a.ultimo?.getTime() ?? 0));
