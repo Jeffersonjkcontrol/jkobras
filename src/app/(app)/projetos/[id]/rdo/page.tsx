@@ -10,6 +10,7 @@ import { ConfirmSubmit } from "@/components/confirm-submit";
 import { RDOForm } from "@/components/forms/rdo-form";
 import { criarRDO, excluirRDO } from "@/app/actions/rdo";
 import { formatarData, formatarDataHora } from "@/lib/utils";
+import { urlFoto } from "@/lib/arquivos";
 
 const ITEM_RDO_TONE: Record<string, "success" | "warning" | "danger"> = {
   OK: "success",
@@ -95,8 +96,8 @@ export default async function ProjetoRDOPage({ params }: { params: Promise<{ id:
                   <div className="flex flex-wrap gap-2">
                     {r.fotos.map((f) => (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <a key={f.id} href={f.url} target="_blank" rel="noreferrer">
-                        <img src={f.url} alt={f.legenda ?? "Foto da obra"} className="h-20 w-20 rounded-lg border border-border object-cover" />
+                      <a key={f.id} href={urlFoto(f.id)} target="_blank" rel="noreferrer">
+                        <img src={urlFoto(f.id)} alt={f.legenda ?? "Foto da obra"} className="h-20 w-20 rounded-lg border border-border object-cover" />
                       </a>
                     ))}
                     <span className="flex items-center gap-1 self-end text-xs text-muted"><Camera className="h-3 w-3" />{r.fotos.length}</span>

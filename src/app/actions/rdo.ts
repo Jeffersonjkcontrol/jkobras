@@ -23,7 +23,8 @@ async function salvarFoto(arquivo: File): Promise<string | null> {
   if (!arquivo || arquivo.size === 0) return null;
   const ext = TIPOS_FOTO[arquivo.type];
   if (!ext || arquivo.size > MAX_FOTO) return null;
-  const dir = path.join(process.cwd(), "public", "uploads");
+  // Fora de public/: os arquivos só saem pela rota /api/arquivos, que confere quem pede.
+  const dir = path.join(process.cwd(), "dados", "uploads");
   await mkdir(dir, { recursive: true });
   const nome = `${randomUUID()}${ext}`;
   await writeFile(path.join(dir, nome), Buffer.from(await arquivo.arrayBuffer()));

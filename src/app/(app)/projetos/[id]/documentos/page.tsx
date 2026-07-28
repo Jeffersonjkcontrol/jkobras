@@ -13,6 +13,8 @@ import {
   Download,
   Layers,
   History,
+  Eye,
+  EyeOff,
   type LucideIcon,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -25,6 +27,8 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { DocumentoForm } from "@/components/forms/documento-form";
 import { criarDocumento, excluirDocumento } from "@/app/actions/documentos";
+import { alternarVisibilidadeDocumento } from "@/app/actions/portal";
+import { urlDocumento } from "@/lib/arquivos";
 import { formatarData, cn } from "@/lib/utils";
 import { CATEGORIA_DOCUMENTO_LABEL, formatarTamanho, extensaoDe } from "@/lib/documentos";
 import { DISCIPLINA_LABEL, proximaRevisao, ordemRevisaoDesc } from "@/lib/arquitetura";
@@ -50,6 +54,7 @@ type Doc = {
   url: string;
   tamanho: number;
   criadoEm: Date;
+  visivelCliente: boolean;
   enviadoPor: { nome: string } | null;
 };
 
@@ -58,10 +63,10 @@ function Miniatura({ doc }: { doc: Doc }) {
   const ehImagem = IMAGENS.includes(ext);
   const Icon = ICONE_CATEGORIA[doc.categoria] ?? FileIcon;
   return (
-    <a href={doc.url} target="_blank" rel="noreferrer" className="block">
+    <a href={urlDocumento(doc.id)} target="_blank" rel="noreferrer" className="block">
       {ehImagem ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={doc.url} alt={doc.nome} className="h-32 w-full border-b border-border object-cover" />
+        <img src={urlDocumento(doc.id)} alt={doc.nome} className="h-32 w-full border-b border-border object-cover" />
       ) : (
         <div className="flex h-32 flex-col items-center justify-center gap-2 border-b border-border bg-surface-muted/40">
           <Icon className="h-10 w-10 text-muted" />
@@ -74,15 +79,38 @@ function Miniatura({ doc }: { doc: Doc }) {
 
 function BotoesDoc({ doc, projetoId, editavel }: { doc: Doc; projetoId: string; editavel: boolean }) {
   return (
-    <div className="flex items-center justify-between">
-      <a href={doc.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-        <Download className="h-3.5 w-3.5" /> Abrir
-      </a>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <a href={urlDocumento(doc.id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+          <Download className="h-3.5 w-3.5" /> Abrir
+        </a>
+        {editavel && (
+          <form action={excluirDocumento}>
+            <input type="hidden" name="id" value={doc.id} />
+            <input type="hidden" name="projetoId" value={projetoId} />
+            <ConfirmSubmit confirmacao="Excluir este arquivo?" />
+          </form>
+        )}
+      </div>
+
+      {/* Opt-in: o cliente só vê no portal o que for liberado aqui. */}
       {editavel && (
-        <form action={excluirDocumento}>
+        <form action={alternarVisibilidadeDocumento}>
           <input type="hidden" name="id" value={doc.id} />
           <input type="hidden" name="projetoId" value={projetoId} />
-          <ConfirmSubmit confirmacao="Excluir este arquivo?" />
+          <button
+            type="submit"
+            title={doc.visivelCliente ? "Ocultar do portal do cliente" : "Liberar no portal do cliente"}
+            className={cn(
+              "inline-flex w-full items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors",
+              doc.visivelCliente
+                ? "border-success/40 bg-success/10 text-success hover:bg-success/20"
+                : "border-border text-muted hover:bg-surface-muted"
+            )}
+          >
+            {doc.visivelCliente ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            {doc.visivelCliente ? "Visível ao cliente" : "Oculto do cliente"}
+          </button>
         </form>
       )}
     </div>
@@ -208,7 +236,7 @@ export default async function DocumentosPage({ params }: { params: Promise<{ id:
                                 <span className="text-muted">{formatarData(h.criadoEm)}</span>
                               </span>
                               <span className="flex items-center gap-2">
-                                <a href={h.url} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">Abrir</a>
+                                <a href={urlDocumento(h.id)} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">Abrir</a>
                                 {editavel && (
                                   <form action={excluirDocumento}>
                                     <input type="hidden" name="id" value={h.id} />

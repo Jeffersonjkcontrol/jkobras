@@ -61,7 +61,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./public/uploads:/app/public/uploads
+      - ./public/uploads:/app/dados/uploads
 
 volumes:
   db_data:

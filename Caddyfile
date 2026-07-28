@@ -17,6 +17,12 @@
 (app) {
 	encode gzip zstd
 
+	# Cinto de seguranca: uploads nao sao mais servidos estaticamente.
+	# O acesso legitimo passa por /api/arquivos, que verifica sessao ou token do portal.
+	handle /uploads/* {
+		respond 404
+	}
+
 	# Cabecalhos de seguranca
 	header {
 		# Forca HTTPS por 1 ano (inclui subdominios)

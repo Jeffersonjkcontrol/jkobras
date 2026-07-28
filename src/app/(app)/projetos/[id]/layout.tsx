@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Pencil, Contact, FileText } from "lucide-react";
+import { ArrowLeft, Pencil, Contact, FileText, Share2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { sessaoOrg } from "@/lib/sessao";
 import { podeEditar } from "@/lib/permissoes";
@@ -9,7 +9,9 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { ProjetoForm } from "@/components/forms/projeto-form";
 import { ProjetoTabs } from "@/components/projeto-tabs";
+import { CompartilharForm } from "@/components/forms/compartilhar-form";
 import { atualizarProjeto, excluirProjeto } from "@/app/actions/projetos";
+import { gerarLinkPortal, revogarLinkPortal, regenerarTokenPortal, salvarOpcoesPortal } from "@/app/actions/portal";
 import { statusCalculadoProjeto, STATUS_LABEL, STATUS_TONE } from "@/lib/projetos";
 
 export default async function ProjetoLayout({
@@ -24,7 +26,7 @@ export default async function ProjetoLayout({
   const org = s.organizacaoId;
   const editavel = podeEditar(s.papel);
 
-  const [projeto, clientes, responsaveis] = await Promise.all([
+  const [projeto, clientes, responsaveis, portal] = await Promise.all([
     prisma.projeto.findFirst({
       where: { id, organizacaoId: org },
       include: {
@@ -34,6 +36,20 @@ export default async function ProjetoLayout({
     }),
     prisma.cliente.findMany({ where: { organizacaoId: org }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
     prisma.user.findMany({ where: { ativo: true, organizacaoId: org }, orderBy: { nome: "asc" }, select: { id: true, nome: true } }),
+    prisma.portalCliente.findFirst({
+      where: { projetoId: id, organizacaoId: org },
+      select: {
+        token: true,
+        ativo: true,
+        expiraEm: true,
+        visitas: true,
+        ultimoAcessoEm: true,
+        mostrarCronograma: true,
+        mostrarDiario: true,
+        mostrarDocumentos: true,
+        mostrarAprovacoes: true,
+      },
+    }),
   ]);
   if (!projeto) notFound();
 
@@ -60,6 +76,28 @@ export default async function ProjetoLayout({
           {projeto.descricao && <p className="mt-1 text-sm text-muted">{projeto.descricao}</p>}
         </div>
         <div className="flex items-center gap-2">
+          {editavel && (
+            <Modal
+              title="Compartilhar com o cliente"
+              trigger={
+                <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-surface px-4 text-sm font-medium hover:bg-surface-muted">
+                  <Share2 className="h-4 w-4" /> Compartilhar
+                  {portal?.ativo && <span className="h-1.5 w-1.5 rounded-full bg-success" title="Link ativo" />}
+                </span>
+              }
+            >
+              <CompartilharForm
+                projetoId={projeto.id}
+                portal={portal}
+                acoes={{
+                  gerar: gerarLinkPortal,
+                  revogar: revogarLinkPortal,
+                  regenerar: regenerarTokenPortal,
+                  salvarOpcoes: salvarOpcoesPortal,
+                }}
+              />
+            </Modal>
+          )}
           <Link
             href={`/relatorios/projeto/${projeto.id}`}
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-surface px-4 text-sm font-medium hover:bg-surface-muted"

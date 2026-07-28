@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { sessaoOrg } from "@/lib/sessao";
 import { CabecalhoRelatorio } from "@/components/relatorios/cabecalho";
 import { formatarData, formatarDataHora, paraInputDate } from "@/lib/utils";
+import { urlFoto } from "@/lib/arquivos";
 import { par, type SP } from "@/lib/listagem";
 
 const ITEM_LABEL: Record<string, string> = { OK: "OK", ATENCAO: "Atenção", PROBLEMA: "Problema" };
@@ -170,7 +171,7 @@ export default async function RelatorioRDOPage({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       key={f.id}
-                      src={f.url}
+                      src={urlFoto(f.id)}
                       alt={f.legenda ?? "Foto da obra"}
                       className="h-28 w-28 rounded border border-neutral-300 object-cover"
                     />

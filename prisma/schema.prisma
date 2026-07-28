@@ -56,6 +56,33 @@ enum StatusPagamento {
   ISENTO
 }
 
+/// Link público de acompanhamento da obra, entregue ao cliente do escritório.
+/// Acesso por token secreto (sem login). Tudo aqui é OPT-IN: o portal mostra
+/// apenas o que as flags liberam, e nunca dados internos (custos, equipe, notas).
+model PortalCliente {
+  id             String    @id @default(cuid())
+  token          String    @unique
+  ativo          Boolean   @default(true)
+  expiraEm       DateTime? // null = sem prazo
+  visitas        Int       @default(0)
+  ultimoAcessoEm DateTime?
+  criadoEm       DateTime  @default(now())
+
+  // O que o cliente enxerga
+  mostrarCronograma Boolean @default(true)
+  mostrarDiario     Boolean @default(true)
+  mostrarDocumentos Boolean @default(true)
+  mostrarAprovacoes Boolean @default(true)
+
+  organizacaoId String
+
+  // Um link por projeto (regenerar o token reaproveita o registro).
+  projetoId String  @unique
+  projeto   Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  @@index([organizacaoId])
+}
+
 /// Histórico de acessos (logins) dos usuários — para o painel de uso do super-admin.
 /// Denormalizado (nome/e-mail/org) para sobreviver à exclusão de usuário/escritório.
 model AcessoLog {
@@ -186,6 +213,7 @@ model Projeto {
   tarefasEquipe TarefaProfissional[]
   aprovacoes   Aprovacao[]
   horas        ApontamentoHoras[]
+  portal       PortalCliente?
 
   @@index([clienteId])
   @@index([organizacaoId])
@@ -399,6 +427,9 @@ model Documento {
   disciplina Disciplina @default(OUTRO)
   prancha    String? // ex.: "Planta baixa — Térreo"
   revisao    String? // ex.: R00, R01, R02
+
+  /// Opt-in: só aparece no portal do cliente se o escritório liberar explicitamente.
+  visivelCliente Boolean @default(false)
 
   organizacaoId String
 

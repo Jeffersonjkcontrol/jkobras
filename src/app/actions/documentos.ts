@@ -50,7 +50,8 @@ export async function criarDocumento(formData: FormData) {
   const prancha = String(formData.get("prancha") || "").trim() || null;
   const revisao = prancha ? String(formData.get("revisao") || "").trim() || "R00" : null;
 
-  const dir = path.join(process.cwd(), "public", "uploads");
+  // Fora de public/: os arquivos só saem pela rota /api/arquivos, que confere quem pede.
+  const dir = path.join(process.cwd(), "dados", "uploads");
   await mkdir(dir, { recursive: true });
   const nomeArquivo = `${randomUUID()}.${ext}`;
   await writeFile(path.join(dir, nomeArquivo), Buffer.from(await arquivo.arrayBuffer()));
@@ -87,7 +88,7 @@ export async function excluirDocumento(formData: FormData) {
   try {
     const nome = doc.url.replace(/^\/uploads\//, "");
     if (nome && !nome.includes("/") && !nome.includes("..")) {
-      await unlink(path.join(process.cwd(), "public", "uploads", nome));
+      await unlink(path.join(process.cwd(), "dados", "uploads", nome));
     }
   } catch {
     // arquivo já ausente — ignorar

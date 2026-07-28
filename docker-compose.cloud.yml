@@ -54,7 +54,9 @@ services:
       HOSTNAME: "0.0.0.0"
       PORT: "3000"
     volumes:
-      - uploads:/app/public/uploads
+      # Fora de public/: servidos so pela rota /api/arquivos (com verificacao de acesso).
+      # O volume nomeado e o mesmo — os arquivos existentes vem junto na remontagem.
+      - uploads:/app/dados/uploads
     expose:
       - "3000" # apenas interno (Caddy alcanca por app:3000); nao publica na internet
 
