@@ -15,6 +15,16 @@ const criarSchema = z.object({
   recebeNotificacoes: z.boolean().optional(),
 });
 
+/** Lê as 4 permissões de visualização do formulário (checkbox = "on"). */
+function lerPermissoes(formData: FormData) {
+  return {
+    verFinanceiro: formData.get("verFinanceiro") === "on",
+    verOrcamentos: formData.get("verOrcamentos") === "on",
+    verCustosEquipe: formData.get("verCustosEquipe") === "on",
+    verDocsRestritos: formData.get("verDocsRestritos") === "on",
+  };
+}
+
 export async function criarUsuario(formData: FormData) {
   const s = await exigirAdminDaOrg();
   await checarLimiteUsuarios(s.organizacaoId);
@@ -36,6 +46,7 @@ export async function criarUsuario(formData: FormData) {
       senhaHash: await bcrypt.hash(d.senha, 10),
       papel: d.papel,
       recebeNotificacoes: d.recebeNotificacoes ?? false,
+      ...lerPermissoes(formData),
     },
   });
   revalidatePath("/usuarios");
@@ -77,7 +88,10 @@ export async function atualizarUsuario(formData: FormData) {
     recebeNotificacoes: d.recebeNotificacoes ?? false,
   };
   if (d.senha && d.senha.length >= 6) data.senhaHash = await bcrypt.hash(d.senha, 10);
-  await prisma.user.updateMany({ where: { id: d.id, organizacaoId: s.organizacaoId }, data });
+  await prisma.user.updateMany({
+    where: { id: d.id, organizacaoId: s.organizacaoId },
+    data: { ...data, ...lerPermissoes(formData) },
+  });
   revalidatePath("/usuarios");
 }
 

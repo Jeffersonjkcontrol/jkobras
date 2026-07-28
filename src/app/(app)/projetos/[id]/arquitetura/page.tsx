@@ -10,6 +10,7 @@ import { Table, THead, TH, TR, TD } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { AprovacaoForm } from "@/components/forms/aprovacao-form";
+import { SemPermissao } from "@/components/sem-permissao";
 import { HorasForm } from "@/components/forms/horas-form";
 import { criarAprovacao, atualizarAprovacao, excluirAprovacao } from "@/app/actions/aprovacoes";
 import { criarApontamento, atualizarApontamento, excluirApontamento, gerarReceitaHonorarios } from "@/app/actions/horas";
@@ -48,6 +49,7 @@ export default async function ProjetoArquiteturaPage({ params }: { params: Promi
     }),
   ]);
 
+  const verValores = s.perm.financeiro;
   const hoje = new Date();
   const vencidas = aprovacoes.filter((a) => aprovacaoVencida(a, hoje));
   const totalHoras = apontamentos.reduce((sum, a) => sum + a.horas, 0);
@@ -134,13 +136,15 @@ export default async function ProjetoArquiteturaPage({ params }: { params: Promi
         </Table>
       )}
 
-      {/* ---------------- Horas e honorários ---------------- */}
+      {/* ---------------- Horas e honorários ----------------
+          Sem permissão de financeiro a pessoa continua apontando as PRÓPRIAS
+          horas; o que some são os valores (valor/hora, total e lançamento). */}
       <div className="flex items-center justify-between pt-2">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Clock className="h-5 w-5 text-primary" /> Horas de projeto
         </h2>
         <div className="flex items-center gap-2">
-          {editavel && totalHonorarios > 0 && (
+          {editavel && verValores && totalHonorarios > 0 && (
             <form action={gerarReceitaHonorarios}>
               <input type="hidden" name="projetoId" value={id} />
               <Button type="submit" variant="outline" size="sm" title="Lançar honorários como receita no Financeiro">
@@ -152,14 +156,16 @@ export default async function ProjetoArquiteturaPage({ params }: { params: Promi
             title="Apontar horas"
             trigger={<span className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground"><Plus className="h-4 w-4" /> Apontar horas</span>}
           >
-            <HorasForm action={criarApontamento} projetoId={id} fases={fases} pessoas={pessoas} podeEscolherPessoa={editavel} />
+            <HorasForm action={criarApontamento} projetoId={id} fases={fases} pessoas={pessoas} podeEscolherPessoa={editavel} verValores={verValores} />
           </Modal>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className={verValores ? "grid grid-cols-2 gap-4" : ""}>
         <Card><CardContent><p className="flex items-center gap-1 text-sm text-muted"><Clock className="h-4 w-4" /> Total de horas</p><p className="mt-1 text-lg font-bold text-foreground">{totalHoras.toFixed(1)} h</p></CardContent></Card>
-        <Card><CardContent><p className="flex items-center gap-1 text-sm text-muted"><Receipt className="h-4 w-4" /> Honorários acumulados</p><p className="mt-1 text-lg font-bold text-success">{formatarMoeda(totalHonorarios)}</p></CardContent></Card>
+        {verValores && (
+          <Card><CardContent><p className="flex items-center gap-1 text-sm text-muted"><Receipt className="h-4 w-4" /> Honorários acumulados</p><p className="mt-1 text-lg font-bold text-success">{formatarMoeda(totalHonorarios)}</p></CardContent></Card>
+        )}
       </div>
 
       {apontamentos.length === 0 ? (
@@ -175,7 +181,7 @@ export default async function ProjetoArquiteturaPage({ params }: { params: Promi
               <TH>Fase</TH>
               <TH>Descrição</TH>
               <TH className="text-right">Horas</TH>
-              <TH className="text-right">Valor</TH>
+              {verValores && <TH className="text-right">Valor</TH>}
               <TH className="text-right">Ações</TH>
             </tr>
           </THead>
@@ -190,12 +196,12 @@ export default async function ProjetoArquiteturaPage({ params }: { params: Promi
                   <TD className="text-muted">{h.etapa?.nome ?? "—"}</TD>
                   <TD className="text-muted">{h.descricao ?? "—"}</TD>
                   <TD className="text-right font-medium">{h.horas.toFixed(1)} h</TD>
-                  <TD className="text-right">{h.valorHora != null ? formatarMoeda(h.horas * h.valorHora) : "—"}</TD>
+                  {verValores && <TD className="text-right">{h.valorHora != null ? formatarMoeda(h.horas * h.valorHora) : "—"}</TD>}
                   <TD className="text-right">
                     {podeMexer && (
                       <div className="flex items-center justify-end gap-1">
                         <Modal title="Editar apontamento" trigger={<span className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-surface-muted"><Pencil className="h-4 w-4" /></span>}>
-                          <HorasForm action={atualizarApontamento} projetoId={id} fases={fases} pessoas={pessoas} podeEscolherPessoa={editavel} apontamento={h} />
+                          <HorasForm action={atualizarApontamento} projetoId={id} fases={fases} pessoas={pessoas} podeEscolherPessoa={editavel} verValores={verValores} apontamento={h} />
                         </Modal>
                         <form action={excluirApontamento}>
                           <input type="hidden" name="id" value={h.id} />

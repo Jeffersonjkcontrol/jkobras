@@ -66,7 +66,7 @@ export default async function RelatorioProjetoPage({ params }: { params: Promise
           <p className="text-neutral-700">Status: <strong>{STATUS_LABEL[status]}</strong></p>
           <p className="text-neutral-700">Progresso: <strong>{progressoMedio}%</strong></p>
           <p className="text-neutral-700">Prazo: {formatarData(projeto.dataInicioPrev)} a {formatarData(projeto.dataFimPrev)}</p>
-          <p className="text-neutral-700">Contrato: <strong>{formatarMoeda(projeto.valorContrato)}</strong></p>
+          {s.perm.financeiro && <p className="text-neutral-700">Contrato: <strong>{formatarMoeda(projeto.valorContrato)}</strong></p>}
           {projeto.responsavel?.nome && <p className="text-neutral-700">Responsável: {projeto.responsavel.nome}</p>}
         </div>
       </section>
@@ -113,7 +113,8 @@ export default async function RelatorioProjetoPage({ params }: { params: Promise
         )}
       </section>
 
-      {/* Financeiro */}
+      {/* Financeiro — só para quem tem permissão de ver valores */}
+      {s.perm.financeiro && (
       <section className="evitar-quebra mb-6">
         <h2 className="mb-2 border-b border-neutral-300 pb-1 text-sm font-bold uppercase tracking-wide">Financeiro</h2>
         <table className="w-full border-collapse text-sm">
@@ -149,6 +150,7 @@ export default async function RelatorioProjetoPage({ params }: { params: Promise
           </tbody>
         </table>
       </section>
+      )}
 
       {/* Equipe */}
       <section className="evitar-quebra mb-6">
@@ -161,7 +163,7 @@ export default async function RelatorioProjetoPage({ params }: { params: Promise
               <tr className="bg-neutral-100">
                 <th className="border border-neutral-300 px-2 py-1.5 text-left font-semibold">Profissional</th>
                 <th className="border border-neutral-300 px-2 py-1.5 text-left font-semibold">Função</th>
-                <th className="border border-neutral-300 px-2 py-1.5 text-right font-semibold">Custo acordado</th>
+                {s.perm.custosEquipe && <th className="border border-neutral-300 px-2 py-1.5 text-right font-semibold">Custo acordado</th>}
               </tr>
             </thead>
             <tbody>
@@ -169,7 +171,7 @@ export default async function RelatorioProjetoPage({ params }: { params: Promise
                 <tr key={a.id} className="evitar-quebra">
                   <td className="border border-neutral-300 px-2 py-1.5">{a.profissional.nome}</td>
                   <td className="border border-neutral-300 px-2 py-1.5">{a.funcaoNaObra ?? a.profissional.funcao}</td>
-                  <td className="border border-neutral-300 px-2 py-1.5 text-right">{formatarCusto(a.tipoCusto, a.custoValor)}</td>
+                  {s.perm.custosEquipe && <td className="border border-neutral-300 px-2 py-1.5 text-right">{formatarCusto(a.tipoCusto, a.custoValor)}</td>}
                 </tr>
               ))}
             </tbody>
@@ -177,8 +179,8 @@ export default async function RelatorioProjetoPage({ params }: { params: Promise
         )}
       </section>
 
-      {/* Orçamentos */}
-      {projeto.orcamentos.length > 0 && (
+      {/* Orçamentos — só para quem tem permissão */}
+      {s.perm.orcamentos && projeto.orcamentos.length > 0 && (
         <section className="evitar-quebra mb-6">
           <h2 className="mb-2 border-b border-neutral-300 pb-1 text-sm font-bold uppercase tracking-wide">Orçamentos</h2>
           <table className="w-full border-collapse text-sm">

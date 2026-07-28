@@ -9,6 +9,7 @@ import { Table, THead, TH, TR, TD } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import { OrcamentoForm } from "@/components/forms/orcamento-form";
+import { SemPermissao } from "@/components/sem-permissao";
 import { criarOrcamento } from "@/app/actions/orcamentos";
 import { formatarMoeda, formatarData } from "@/lib/utils";
 import { totalOrcamento, STATUS_ORCAMENTO_LABEL, STATUS_ORCAMENTO_TONE } from "@/lib/orcamentos";
@@ -18,6 +19,9 @@ export default async function OrcamentosPage({ params }: { params: Promise<{ id:
   const s = await sessaoOrg();
   const org = s.organizacaoId;
   const editavel = podeEditar(s.papel);
+
+  // Área sensível: exige permissão de visualização.
+  if (!s.perm.orcamentos) return <SemPermissao area="os orçamentos deste projeto" />;
 
   const projeto = await prisma.projeto.findFirst({ where: { id, organizacaoId: org }, select: { id: true } });
   if (!projeto) notFound();

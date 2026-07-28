@@ -24,3 +24,30 @@ export function ehAdmin(papel: Papel | undefined | null): boolean {
 export function ehSuperAdmin(papel: Papel | undefined | null): boolean {
   return papel === "SUPER_ADMIN";
 }
+
+/**
+ * Permissões de VISUALIZAÇÃO por usuário (o papel acima controla a escrita).
+ * Servem para esconder dados sensíveis de quem não precisa deles — ex.: o
+ * encarregado que só preenche RDO não vê custo de mão de obra, CPF nem PIX.
+ * O ADMIN da organização recebe sempre TODAS_PERMISSOES.
+ */
+export type Permissoes = {
+  financeiro: boolean; // financeiro do projeto, honorários e valor do contrato
+  orcamentos: boolean; // propostas e valores ao cliente
+  custosEquipe: boolean; // CPF, PIX, telefone e quanto cada profissional recebe
+  docsRestritos: boolean; // documentos marcados como restritos
+};
+
+export const TODAS_PERMISSOES: Permissoes = {
+  financeiro: true,
+  orcamentos: true,
+  custosEquipe: true,
+  docsRestritos: true,
+};
+
+export const PERMISSAO_LABEL: Record<keyof Permissoes, string> = {
+  financeiro: "Financeiro e honorários",
+  orcamentos: "Orçamentos",
+  custosEquipe: "Custos e dados da equipe",
+  docsRestritos: "Documentos restritos",
+};

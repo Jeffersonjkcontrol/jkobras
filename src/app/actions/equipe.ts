@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { exigirGestorDaOrg } from "@/lib/sessao";
+import { exigirGestorDaOrg, exigirGestorCom } from "@/lib/sessao";
 import type { TipoCusto, StatusTarefa } from "@prisma/client";
 
 const tipoCusto = z.enum(["DIARIA", "HORA", "EMPREITADA", "MENSALISTA"]);
@@ -70,14 +70,14 @@ function dadosProf(d: ReturnType<typeof lerProf>, ativo: boolean) {
 }
 
 export async function criarProfissional(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("custosEquipe");
   const d = lerProf(formData);
   await prisma.profissional.create({ data: { ...dadosProf(d, true), organizacaoId: s.organizacaoId } });
   revalidatePath("/equipe");
 }
 
 export async function atualizarProfissional(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("custosEquipe");
   const id = String(formData.get("id"));
   const d = lerProf(formData);
   const ativo = formData.get("ativo") != null;
@@ -87,7 +87,7 @@ export async function atualizarProfissional(formData: FormData) {
 }
 
 export async function excluirProfissional(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("custosEquipe");
   const id = String(formData.get("id"));
   await prisma.profissional.deleteMany({ where: { id, organizacaoId: s.organizacaoId } });
   revalidatePath("/equipe");
@@ -117,7 +117,7 @@ function lerAlocacao(formData: FormData) {
 }
 
 export async function alocarProfissional(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("custosEquipe");
   const d = lerAlocacao(formData);
   await projetoDaOrg(d.projetoId, s.organizacaoId);
   await profissionalDaOrg(d.profissionalId, s.organizacaoId);
@@ -141,7 +141,7 @@ export async function alocarProfissional(formData: FormData) {
 }
 
 export async function atualizarAlocacao(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("custosEquipe");
   const id = String(formData.get("id"));
   const d = lerAlocacao(formData);
   await prisma.alocacaoProjeto.updateMany({
@@ -157,7 +157,7 @@ export async function atualizarAlocacao(formData: FormData) {
 }
 
 export async function desalocarProfissional(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("custosEquipe");
   const id = String(formData.get("id"));
   const projetoId = String(formData.get("projetoId"));
   await prisma.alocacaoProjeto.deleteMany({ where: { id, organizacaoId: s.organizacaoId } });
@@ -188,7 +188,7 @@ function lerTarefa(formData: FormData) {
   });
 }
 
-function dadosTarefa(d: ReturnType<typeof lerTarefa>) {
+function dadosTarefa(d: ReturnType<typeof lerTarefa>, podeCusto: boolean) {
   const status = d.status as StatusTarefa;
   return {
     titulo: d.titulo,
@@ -196,7 +196,8 @@ function dadosTarefa(d: ReturnType<typeof lerTarefa>) {
     profissionalId: d.profissionalId || null,
     status,
     prazo: d.prazo ? new Date(d.prazo) : null,
-    custo: d.custo ?? null,
+    // O custo da tarefa só é gravado por quem pode ver custos da equipe.
+    custo: podeCusto ? d.custo ?? null : null,
     concluidaEm: status === "CONCLUIDA" ? new Date() : null,
   };
 }
@@ -207,7 +208,7 @@ export async function criarTarefa(formData: FormData) {
   await projetoDaOrg(d.projetoId, s.organizacaoId);
   if (d.profissionalId) await profissionalDaOrg(d.profissionalId, s.organizacaoId);
   await prisma.tarefaProfissional.create({
-    data: { ...dadosTarefa(d), organizacaoId: s.organizacaoId, projetoId: d.projetoId },
+    data: { ...dadosTarefa(d, s.perm.custosEquipe), organizacaoId: s.organizacaoId, projetoId: d.projetoId },
   });
   revalidatePath(`/projetos/${d.projetoId}/equipe`);
 }
@@ -217,7 +218,7 @@ export async function atualizarTarefa(formData: FormData) {
   const id = String(formData.get("id"));
   const d = lerTarefa(formData);
   if (d.profissionalId) await profissionalDaOrg(d.profissionalId, s.organizacaoId);
-  await prisma.tarefaProfissional.updateMany({ where: { id, organizacaoId: s.organizacaoId }, data: dadosTarefa(d) });
+  await prisma.tarefaProfissional.updateMany({ where: { id, organizacaoId: s.organizacaoId }, data: dadosTarefa(d, s.perm.custosEquipe) });
   revalidatePath(`/projetos/${d.projetoId}/equipe`);
 }
 
@@ -252,7 +253,7 @@ const despesaSchema = z.object({
 
 /** Gera um lançamento de DESPESA (categoria "Mão de obra") a partir do custo da equipe. */
 export async function gerarDespesaMaoDeObra(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("financeiro");
   const d = despesaSchema.parse({
     projetoId: formData.get("projetoId"),
     descricao: formData.get("descricao"),

@@ -149,6 +149,14 @@ model User {
   criadoEm           DateTime  @default(now())
   ultimoAcessoEm     DateTime?
 
+  // Permissões de VISUALIZAÇÃO de dados sensíveis (o papel controla a escrita).
+  // Default true para não tirar acesso de quem já usa o sistema; o ADMIN da
+  // organização enxerga tudo independentemente destas flags.
+  verFinanceiro    Boolean @default(true) // financeiro do projeto, honorários e valor de contrato
+  verOrcamentos    Boolean @default(true) // propostas e valores ao cliente
+  verCustosEquipe  Boolean @default(true) // CPF, PIX, telefone e quanto cada profissional recebe
+  verDocsRestritos Boolean @default(true) // documentos marcados como restritos
+
   // Tenant: SUPER_ADMIN (dono da plataforma) não pertence a nenhuma organização.
   organizacaoId String?
   organizacao   Organizacao? @relation(fields: [organizacaoId], references: [id], onDelete: Cascade)
@@ -430,6 +438,9 @@ model Documento {
 
   /// Opt-in: só aparece no portal do cliente se o escritório liberar explicitamente.
   visivelCliente Boolean @default(false)
+
+  /// Sigiloso: dentro do escritório, só quem tem `verDocsRestritos` abre.
+  restrito Boolean @default(false)
 
   organizacaoId String
 

@@ -11,6 +11,35 @@ import { DeleteButton } from "@/components/delete-button";
 import { UsuarioForm } from "@/components/forms/usuario-form";
 import { criarUsuario, atualizarUsuario, excluirUsuario } from "@/app/actions/usuarios";
 
+type Flags = {
+  papel: string;
+  verFinanceiro: boolean;
+  verOrcamentos: boolean;
+  verCustosEquipe: boolean;
+  verDocsRestritos: boolean;
+};
+
+/** Resumo do que o usuário enxerga — o admin bate o olho e entende. */
+function ResumoPermissoes({ u }: { u: Flags }) {
+  if (u.papel === "ADMIN") return <span className="text-xs text-muted">Tudo (administrador)</span>;
+
+  const bloqueadas = [
+    !u.verFinanceiro && "Financeiro",
+    !u.verOrcamentos && "Orçamentos",
+    !u.verCustosEquipe && "Custos da equipe",
+    !u.verDocsRestritos && "Docs restritos",
+  ].filter(Boolean) as string[];
+
+  if (bloqueadas.length === 0) return <Badge tone="success">Tudo</Badge>;
+  return (
+    <span className="flex flex-wrap gap-1">
+      {bloqueadas.map((b) => (
+        <Badge key={b} tone="warning">sem {b}</Badge>
+      ))}
+    </span>
+  );
+}
+
 export default async function UsuariosPage() {
   const s = await sessaoOrg();
   if (!ehAdmin(s.papel)) redirect("/");
@@ -45,6 +74,7 @@ export default async function UsuariosPage() {
             <TH>Nome</TH>
             <TH>E-mail</TH>
             <TH>Papel</TH>
+            <TH>Vê dados sigilosos</TH>
             <TH>Situação</TH>
             <TH className="text-right">Ações</TH>
           </tr>
@@ -55,14 +85,15 @@ export default async function UsuariosPage() {
               <TD className="font-medium">{u.nome}</TD>
               <TD>{u.email}</TD>
               <TD>{PAPEL_LABEL[u.papel]}</TD>
+              <TD><ResumoPermissoes u={u} /></TD>
               <TD>{u.ativo ? <Badge tone="success">Ativo</Badge> : <Badge tone="default">Inativo</Badge>}</TD>
               <TD>
                 <div className="flex items-center justify-end gap-1">
                   <Modal
                     title="Editar usuário"
                     trigger={
-                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-surface-muted">
-                        <Pencil className="h-4 w-4" />
+                      <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-medium hover:bg-surface-muted">
+                        <Pencil className="h-4 w-4" /> Editar
                       </span>
                     }
                   >

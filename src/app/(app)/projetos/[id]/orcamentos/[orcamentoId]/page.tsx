@@ -13,6 +13,7 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { OrcamentoForm } from "@/components/forms/orcamento-form";
 import { ItemOrcamentoForm } from "@/components/forms/item-orcamento-form";
+import { SemPermissao } from "@/components/sem-permissao";
 import {
   atualizarOrcamento,
   excluirOrcamento,
@@ -35,6 +36,9 @@ export default async function OrcamentoDetalhePage({ params }: { params: Promise
   const s = await sessaoOrg();
   const org = s.organizacaoId;
   const editavel = podeEditar(s.papel);
+
+  // Área sensível: exige permissão de visualização.
+  if (!s.perm.orcamentos) return <SemPermissao area="os orçamentos deste projeto" />;
 
   const orcamento = await prisma.orcamento.findFirst({
     where: { id: orcamentoId, organizacaoId: org, projetoId: id },

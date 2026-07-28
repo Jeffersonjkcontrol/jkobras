@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { exigirGestorDaOrg } from "@/lib/sessao";
+import { exigirGestorCom } from "@/lib/sessao";
 
 async function projetoDaOrg(projetoId: string, organizacaoId: string) {
   const p = await prisma.projeto.findFirst({ where: { id: projetoId, organizacaoId }, select: { id: true } });
@@ -33,7 +33,7 @@ function lerLancamento(formData: FormData) {
 }
 
 export async function criarLancamento(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("financeiro");
   const d = lerLancamento(formData);
   await projetoDaOrg(d.projetoId, s.organizacaoId);
   await prisma.lancamentoFinanceiro.create({
@@ -52,7 +52,7 @@ export async function criarLancamento(formData: FormData) {
 }
 
 export async function atualizarLancamento(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("financeiro");
   const id = String(formData.get("id"));
   const d = lerLancamento(formData);
   await prisma.lancamentoFinanceiro.updateMany({
@@ -70,7 +70,7 @@ export async function atualizarLancamento(formData: FormData) {
 }
 
 export async function excluirLancamento(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("financeiro");
   const id = String(formData.get("id"));
   const projetoId = String(formData.get("projetoId"));
   await prisma.lancamentoFinanceiro.deleteMany({ where: { id, organizacaoId: s.organizacaoId } });

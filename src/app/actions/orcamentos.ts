@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { exigirGestorDaOrg } from "@/lib/sessao";
+import { exigirGestorCom } from "@/lib/sessao";
 import type { StatusOrcamento } from "@prisma/client";
 
 /** Garante que o projeto é da organização. */
@@ -29,7 +29,7 @@ const orcamentoSchema = z.object({
 });
 
 export async function criarOrcamento(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("orcamentos");
   const validade = formData.get("validadeDias");
   const d = orcamentoSchema.parse({
     projetoId: formData.get("projetoId"),
@@ -52,7 +52,7 @@ export async function criarOrcamento(formData: FormData) {
 }
 
 export async function atualizarOrcamento(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("orcamentos");
   const id = String(formData.get("id"));
   const validade = formData.get("validadeDias");
   const d = orcamentoSchema.parse({
@@ -71,7 +71,7 @@ export async function atualizarOrcamento(formData: FormData) {
 const STATUS_OK: StatusOrcamento[] = ["RASCUNHO", "ENVIADO", "APROVADO", "REJEITADO"];
 
 export async function alterarStatusOrcamento(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("orcamentos");
   const id = String(formData.get("id"));
   const status = String(formData.get("status")) as StatusOrcamento;
   if (!STATUS_OK.includes(status)) throw new Error("Status inválido.");
@@ -82,7 +82,7 @@ export async function alterarStatusOrcamento(formData: FormData) {
 }
 
 export async function excluirOrcamento(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("orcamentos");
   const id = String(formData.get("id"));
   const projetoId = String(formData.get("projetoId"));
   await prisma.orcamento.deleteMany({ where: { id, organizacaoId: s.organizacaoId } });
@@ -112,7 +112,7 @@ function lerItem(formData: FormData) {
 }
 
 export async function adicionarItemOrcamento(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("orcamentos");
   const d = lerItem(formData);
   const projetoId = await orcamentoDaOrg(d.orcamentoId, s.organizacaoId);
   await prisma.itemOrcamento.create({
@@ -129,7 +129,7 @@ export async function adicionarItemOrcamento(formData: FormData) {
 }
 
 export async function atualizarItemOrcamento(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("orcamentos");
   const id = String(formData.get("id"));
   const d = lerItem(formData);
   const projetoId = await orcamentoDaOrg(d.orcamentoId, s.organizacaoId);
@@ -147,7 +147,7 @@ export async function atualizarItemOrcamento(formData: FormData) {
 }
 
 export async function excluirItemOrcamento(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("orcamentos");
   const id = String(formData.get("id"));
   const orcamentoId = String(formData.get("orcamentoId"));
   const projetoId = await orcamentoDaOrg(orcamentoId, s.organizacaoId);

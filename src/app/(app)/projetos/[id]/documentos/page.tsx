@@ -15,6 +15,8 @@ import {
   History,
   Eye,
   EyeOff,
+  Lock,
+  LockOpen,
   type LucideIcon,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
@@ -27,7 +29,7 @@ import { Modal } from "@/components/ui/modal";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { DocumentoForm } from "@/components/forms/documento-form";
 import { criarDocumento, excluirDocumento } from "@/app/actions/documentos";
-import { alternarVisibilidadeDocumento } from "@/app/actions/portal";
+import { alternarVisibilidadeDocumento, alternarRestricaoDocumento } from "@/app/actions/portal";
 import { urlDocumento } from "@/lib/arquivos";
 import { formatarData, cn } from "@/lib/utils";
 import { CATEGORIA_DOCUMENTO_LABEL, formatarTamanho, extensaoDe } from "@/lib/documentos";
@@ -55,6 +57,7 @@ type Doc = {
   tamanho: number;
   criadoEm: Date;
   visivelCliente: boolean;
+  restrito: boolean;
   enviadoPor: { nome: string } | null;
 };
 
@@ -93,6 +96,27 @@ function BotoesDoc({ doc, projetoId, editavel }: { doc: Doc; projetoId: string; 
         )}
       </div>
 
+      {/* Sigilo interno: só quem tem permissão de documentos restritos enxerga. */}
+      {editavel && (
+        <form action={alternarRestricaoDocumento}>
+          <input type="hidden" name="id" value={doc.id} />
+          <input type="hidden" name="projetoId" value={projetoId} />
+          <button
+            type="submit"
+            title={doc.restrito ? "Liberar para todos do escritório" : "Marcar como restrito (só quem tem permissão vê)"}
+            className={cn(
+              "inline-flex w-full items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors",
+              doc.restrito
+                ? "border-warning/40 bg-warning/10 text-warning hover:bg-warning/20"
+                : "border-border text-muted hover:bg-surface-muted"
+            )}
+          >
+            {doc.restrito ? <Lock className="h-3.5 w-3.5" /> : <LockOpen className="h-3.5 w-3.5" />}
+            {doc.restrito ? "Restrito no escritório" : "Todos do escritório"}
+          </button>
+        </form>
+      )}
+
       {/* Opt-in: o cliente só vê no portal o que for liberado aqui. */}
       {editavel && (
         <form action={alternarVisibilidadeDocumento}>
@@ -126,8 +150,13 @@ export default async function DocumentosPage({ params }: { params: Promise<{ id:
   const projeto = await prisma.projeto.findFirst({ where: { id, organizacaoId: org }, select: { id: true } });
   if (!projeto) notFound();
 
+  // Quem não tem permissão simplesmente não recebe os documentos restritos.
   const documentos = await prisma.documento.findMany({
-    where: { projetoId: id, organizacaoId: org },
+    where: {
+      projetoId: id,
+      organizacaoId: org,
+      ...(s.perm.docsRestritos ? {} : { restrito: false }),
+    },
     orderBy: { criadoEm: "desc" },
     include: { enviadoPor: { select: { nome: true } } },
   });

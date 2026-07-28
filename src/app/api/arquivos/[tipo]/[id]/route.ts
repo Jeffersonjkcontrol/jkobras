@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { portalPorToken } from "@/lib/portal";
+import { ehAdmin } from "@/lib/permissoes";
 
 export const dynamic = "force-dynamic";
 
@@ -41,10 +42,12 @@ export async function GET(
   let projetoId: string;
   let exigeLiberacao = false; // documentos precisam de visivelCliente no portal
 
+  let docRestrito = false;
+
   if (tipo === "documento") {
     const doc = await prisma.documento.findUnique({
       where: { id },
-      select: { url: true, mimeType: true, organizacaoId: true, projetoId: true, visivelCliente: true },
+      select: { url: true, mimeType: true, organizacaoId: true, projetoId: true, visivelCliente: true, restrito: true },
     });
     if (!doc) return naoEncontrado();
     url = doc.url;
@@ -52,6 +55,7 @@ export async function GET(
     organizacaoId = doc.organizacaoId;
     projetoId = doc.projetoId;
     exigeLiberacao = !doc.visivelCliente;
+    docRestrito = doc.restrito;
   } else {
     // FotoRDO não tem organizacaoId próprio: o escopo vem do diário pai.
     const foto = await prisma.fotoRDO.findUnique({
@@ -84,6 +88,12 @@ export async function GET(
       const orgDaSessao = u.impersonandoOrgId ?? u.organizacaoId;
       // Super-admin sem impersonar não tem motivo para baixar arquivo de tenant.
       autorizado = !!orgDaSessao && orgDaSessao === organizacaoId;
+
+      // Documento restrito exige também a permissão de visualização.
+      if (autorizado && docRestrito && !ehAdmin(u.papel) && !u.impersonandoOrgId) {
+        const flags = await prisma.user.findUnique({ where: { id: u.id }, select: { verDocsRestritos: true } });
+        autorizado = flags?.verDocsRestritos ?? false;
+      }
     }
   }
 

@@ -22,6 +22,7 @@ export function HorasForm({
   fases,
   pessoas,
   podeEscolherPessoa = false,
+  verValores = true,
   apontamento,
 }: {
   action: (formData: FormData) => void;
@@ -29,6 +30,8 @@ export function HorasForm({
   fases: Opcao[];
   pessoas: Opcao[];
   podeEscolherPessoa?: boolean;
+  /** Sem permissão de financeiro: aponta horas, mas não vê nem define valor/hora. */
+  verValores?: boolean;
   apontamento?: Apontamento;
 }) {
   const close = useModalClose();
@@ -47,10 +50,12 @@ export function HorasForm({
           <Label htmlFor="horas">Horas *</Label>
           <Input id="horas" name="horas" type="number" step="0.25" min="0.25" required defaultValue={h?.horas ?? ""} placeholder="Ex.: 3.5" />
         </div>
-        <div>
-          <Label htmlFor="valorHora">Valor/hora (R$)</Label>
-          <Input id="valorHora" name="valorHora" type="number" step="0.01" min="0" defaultValue={h?.valorHora ?? ""} placeholder="Ex.: 180" />
-        </div>
+        {verValores && (
+          <div>
+            <Label htmlFor="valorHora">Valor/hora (R$)</Label>
+            <Input id="valorHora" name="valorHora" type="number" step="0.01" min="0" defaultValue={h?.valorHora ?? ""} placeholder="Ex.: 180" />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

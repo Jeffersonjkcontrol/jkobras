@@ -11,7 +11,18 @@ type Usuario = {
   papel: string;
   ativo: boolean;
   recebeNotificacoes: boolean;
+  verFinanceiro: boolean;
+  verOrcamentos: boolean;
+  verCustosEquipe: boolean;
+  verDocsRestritos: boolean;
 };
+
+const AREAS: { name: string; label: string; descricao: string }[] = [
+  { name: "verFinanceiro", label: "Financeiro e honorários", descricao: "Lançamentos, saldo, valor do contrato e valor/hora" },
+  { name: "verOrcamentos", label: "Orçamentos", descricao: "Propostas e valores apresentados ao cliente" },
+  { name: "verCustosEquipe", label: "Custos e dados da equipe", descricao: "CPF, PIX, telefone e quanto cada profissional recebe" },
+  { name: "verDocsRestritos", label: "Documentos restritos", descricao: "Arquivos marcados como restritos (ex.: contratos)" },
+];
 
 export function UsuarioForm({
   action,
@@ -49,6 +60,31 @@ export function UsuarioForm({
           </Select>
         </div>
       </div>
+      {/* Permissões de visualização: o papel acima define o que a pessoa pode
+          EDITAR; estas caixas definem o que ela pode VER. */}
+      <div className="border-t border-border pt-4">
+        <p className="text-sm font-medium text-foreground">O que este usuário pode ver</p>
+        <p className="mb-2 text-xs text-muted">
+          Desmarque para esconder dados sigilosos. Administradores veem tudo, independentemente destas caixas.
+        </p>
+        <div className="space-y-2">
+          {AREAS.map((a) => (
+            <label key={a.name} className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border p-2.5 hover:bg-surface-muted">
+              <input
+                type="checkbox"
+                name={a.name}
+                defaultChecked={(usuario?.[a.name as keyof Usuario] as boolean) ?? true}
+                className="mt-0.5 h-4 w-4 rounded border-border"
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">{a.label}</span>
+                <span className="block text-xs text-muted">{a.descricao}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       <label className="flex items-center gap-2 text-sm text-foreground">
         <input type="checkbox" name="recebeNotificacoes" defaultChecked={usuario?.recebeNotificacoes ?? false} /> Recebe notificações
       </label>

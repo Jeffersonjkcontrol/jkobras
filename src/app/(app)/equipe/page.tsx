@@ -19,6 +19,7 @@ export default async function EquipePage({ searchParams }: { searchParams: Promi
   const s = await sessaoOrg();
   const org = s.organizacaoId;
   const editavel = podeEditar(s.papel);
+  const verCustos = s.perm.custosEquipe;
 
   const sp = await searchParams;
   const busca = par(sp, "busca");
@@ -81,8 +82,8 @@ export default async function EquipePage({ searchParams }: { searchParams: Promi
             <tr>
               <TH>Nome</TH>
               <TH>Função</TH>
-              <TH className="text-right">Custo</TH>
-              <TH>Telefone</TH>
+              {verCustos && <TH className="text-right">Custo</TH>}
+              {verCustos && <TH>Telefone</TH>}
               <TH className="text-right">Obras</TH>
               <TH></TH>
               <TH className="text-right">Ação</TH>
@@ -97,12 +98,14 @@ export default async function EquipePage({ searchParams }: { searchParams: Promi
                   </span>
                 </TD>
                 <TD className="text-muted">{p.funcao}</TD>
-                <TD className="text-right whitespace-nowrap">{formatarCusto(p.tipoCusto, p.custoValor)}</TD>
-                <TD className="text-muted">
-                  {p.telefone ? (
-                    <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {p.telefone}</span>
-                  ) : "—"}
-                </TD>
+                {verCustos && <TD className="text-right whitespace-nowrap">{formatarCusto(p.tipoCusto, p.custoValor)}</TD>}
+                {verCustos && (
+                  <TD className="text-muted">
+                    {p.telefone ? (
+                      <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" /> {p.telefone}</span>
+                    ) : "—"}
+                  </TD>
+                )}
                 <TD className="text-right">{p._count.alocacoes}</TD>
                 <TD>{!p.ativo && <Badge tone="default">Inativo</Badge>}</TD>
                 <TD className="text-right">

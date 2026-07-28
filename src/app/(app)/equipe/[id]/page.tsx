@@ -10,6 +10,7 @@ import { Table, THead, TH, TR, TD } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { ProfissionalForm } from "@/components/forms/profissional-form";
+import { SemPermissao } from "@/components/sem-permissao";
 import { atualizarProfissional, excluirProfissional } from "@/app/actions/equipe";
 import { formatarCusto, TIPO_CUSTO_LABEL } from "@/lib/equipe";
 
@@ -31,6 +32,7 @@ export default async function ProfissionalDetalhePage({ params }: { params: Prom
   const s = await sessaoOrg();
   const org = s.organizacaoId;
   const editavel = podeEditar(s.papel);
+  const verCustos = s.perm.custosEquipe;
 
   const p = await prisma.profissional.findFirst({
     where: { id, organizacaoId: org },
@@ -53,9 +55,11 @@ export default async function ProfissionalDetalhePage({ params }: { params: Prom
             <Badge tone="info">{p.funcao}</Badge>
             {!p.ativo && <Badge tone="default">Inativo</Badge>}
           </div>
-          <p className="mt-1 text-sm text-muted">
-            {TIPO_CUSTO_LABEL[p.tipoCusto]} · <span className="font-medium text-foreground">{formatarCusto(p.tipoCusto, p.custoValor)}</span>
-          </p>
+          {verCustos && (
+            <p className="mt-1 text-sm text-muted">
+              {TIPO_CUSTO_LABEL[p.tipoCusto]} · <span className="font-medium text-foreground">{formatarCusto(p.tipoCusto, p.custoValor)}</span>
+            </p>
+          )}
         </div>
         {editavel && (
           <div className="flex items-center gap-2">
@@ -77,16 +81,21 @@ export default async function ProfissionalDetalhePage({ params }: { params: Prom
         )}
       </div>
 
-      <Card>
-        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Dado icon={Phone} label="Telefone" valor={p.telefone} />
-          <Dado icon={Mail} label="E-mail" valor={p.email} />
-          <Dado icon={IdCard} label="CPF" valor={p.cpf} />
-          <Dado icon={Landmark} label="Chave PIX" valor={p.chavePix} />
-          <Dado icon={MapPin} label="Endereço" valor={p.endereco} />
-          <Dado icon={Siren} label="Contato de emergência" valor={p.contatoEmergencia} />
-        </CardContent>
-      </Card>
+      {/* Dados pessoais e financeiros do profissional: só com permissão. */}
+      {verCustos ? (
+        <Card>
+          <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Dado icon={Phone} label="Telefone" valor={p.telefone} />
+            <Dado icon={Mail} label="E-mail" valor={p.email} />
+            <Dado icon={IdCard} label="CPF" valor={p.cpf} />
+            <Dado icon={Landmark} label="Chave PIX" valor={p.chavePix} />
+            <Dado icon={MapPin} label="Endereço" valor={p.endereco} />
+            <Dado icon={Siren} label="Contato de emergência" valor={p.contatoEmergencia} />
+          </CardContent>
+        </Card>
+      ) : (
+        <SemPermissao area="os dados pessoais e o custo deste profissional" />
+      )}
 
       {p.observacoes && (
         <Card>
@@ -111,7 +120,7 @@ export default async function ProfissionalDetalhePage({ params }: { params: Prom
               <tr>
                 <TH>Obra</TH>
                 <TH>Função na obra</TH>
-                <TH className="text-right">Custo acordado</TH>
+                {verCustos && <TH className="text-right">Custo acordado</TH>}
                 <TH className="text-right">Ação</TH>
               </tr>
             </THead>
@@ -120,7 +129,7 @@ export default async function ProfissionalDetalhePage({ params }: { params: Prom
                 <TR key={a.id}>
                   <TD className="font-medium">{a.projeto.titulo}</TD>
                   <TD className="text-muted">{a.funcaoNaObra ?? p.funcao}</TD>
-                  <TD className="text-right whitespace-nowrap">{formatarCusto(a.tipoCusto, a.custoValor)}</TD>
+                  {verCustos && <TD className="text-right whitespace-nowrap">{formatarCusto(a.tipoCusto, a.custoValor)}</TD>}
                   <TD className="text-right">
                     <Link href={`/projetos/${a.projeto.id}/equipe`} className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
                       Abrir <ArrowRight className="h-3.5 w-3.5" />

@@ -67,6 +67,7 @@ export default async function ProjetoEquipePage({ params }: { params: Promise<{ 
     }),
   ]);
 
+  const verCustos = s.perm.custosEquipe;
   const alocadosIds = new Set(alocacoes.map((a) => a.profissionalId));
   const disponiveis = profissionais.filter((p) => !alocadosIds.has(p.id));
   const equipeDaObra = alocacoes.map((a) => ({ id: a.profissional.id, nome: a.profissional.nome, funcao: a.profissional.funcao }));
@@ -81,11 +82,15 @@ export default async function ProjetoEquipePage({ params }: { params: Promise<{ 
 
   return (
     <div className="space-y-6">
-      {/* Resumo de custo */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* Resumo — os cartões de custo só para quem tem permissão */}
+      <div className={cn("grid grid-cols-1 gap-4", verCustos ? "sm:grid-cols-3" : "")}>
         <Card><CardContent><p className="flex items-center gap-1 text-sm text-muted"><Users className="h-4 w-4" /> Profissionais na obra</p><p className="mt-1 text-lg font-bold text-foreground">{alocacoes.length}</p></CardContent></Card>
-        <Card><CardContent><p className="flex items-center gap-1 text-sm text-muted"><HardHat className="h-4 w-4" /> Custo fechado (empreitadas + tarefas)</p><p className="mt-1 text-lg font-bold text-foreground">{formatarMoeda(custoEmpreitadas + custoTarefas)}</p></CardContent></Card>
-        <Card><CardContent><p className="flex items-center gap-1 text-sm text-muted"><Wallet className="h-4 w-4" /> Mão de obra lançada (financeiro)</p><p className="mt-1 text-lg font-bold text-danger">{formatarMoeda(lancado)}</p></CardContent></Card>
+        {verCustos && (
+          <>
+            <Card><CardContent><p className="flex items-center gap-1 text-sm text-muted"><HardHat className="h-4 w-4" /> Custo fechado (empreitadas + tarefas)</p><p className="mt-1 text-lg font-bold text-foreground">{formatarMoeda(custoEmpreitadas + custoTarefas)}</p></CardContent></Card>
+            <Card><CardContent><p className="flex items-center gap-1 text-sm text-muted"><Wallet className="h-4 w-4" /> Mão de obra lançada (financeiro)</p><p className="mt-1 text-lg font-bold text-danger">{formatarMoeda(lancado)}</p></CardContent></Card>
+          </>
+        )}
       </div>
 
       {/* Alocações */}
@@ -113,7 +118,7 @@ export default async function ProjetoEquipePage({ params }: { params: Promise<{ 
             <tr>
               <TH>Profissional</TH>
               <TH>Função na obra</TH>
-              <TH className="text-right">Custo acordado</TH>
+              {verCustos && <TH className="text-right">Custo acordado</TH>}
               {editavel && <TH className="text-right">Ações</TH>}
             </tr>
           </THead>
@@ -122,14 +127,14 @@ export default async function ProjetoEquipePage({ params }: { params: Promise<{ 
               <TR key={a.id}>
                 <TD className="font-medium">
                   <Link href={`/equipe/${a.profissional.id}`} className="hover:text-primary">{a.profissional.nome}</Link>
-                  {a.profissional.telefone && <span className="ml-2 text-xs text-muted">{a.profissional.telefone}</span>}
+                  {verCustos && a.profissional.telefone && <span className="ml-2 text-xs text-muted">{a.profissional.telefone}</span>}
                 </TD>
                 <TD className="text-muted">{a.funcaoNaObra ?? a.profissional.funcao}</TD>
-                <TD className="text-right whitespace-nowrap">{formatarCusto(a.tipoCusto, a.custoValor)}</TD>
+                {verCustos && <TD className="text-right whitespace-nowrap">{formatarCusto(a.tipoCusto, a.custoValor)}</TD>}
                 {editavel && (
                   <TD className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {a.custoValor != null && a.tipoCusto === "EMPREITADA" && (
+                      {verCustos && a.custoValor != null && a.tipoCusto === "EMPREITADA" && (
                         <form action={gerarDespesaMaoDeObra}>
                           <input type="hidden" name="projetoId" value={id} />
                           <input type="hidden" name="descricao" value={`Mão de obra: ${a.profissional.nome} (${a.funcaoNaObra ?? a.profissional.funcao})`} />
@@ -204,7 +209,7 @@ export default async function ProjetoEquipePage({ params }: { params: Promise<{ 
                     <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted">
                       {t.profissional ? <span>{t.profissional.nome} · {t.profissional.funcao}</span> : <span>Sem responsável</span>}
                       {t.prazo && <span className="flex items-center gap-1"><CalendarClock className="h-3 w-3" /> {formatarData(t.prazo)}</span>}
-                      {t.custo != null && <span className="font-medium text-foreground">{formatarMoeda(t.custo)}</span>}
+                      {verCustos && t.custo != null && <span className="font-medium text-foreground">{formatarMoeda(t.custo)}</span>}
                     </p>
                   </div>
 
@@ -212,7 +217,7 @@ export default async function ProjetoEquipePage({ params }: { params: Promise<{ 
 
                   {editavel && (
                     <div className="flex items-center gap-1">
-                      {t.custo != null && (
+                      {verCustos && t.custo != null && (
                         <form action={gerarDespesaMaoDeObra}>
                           <input type="hidden" name="projetoId" value={id} />
                           <input type="hidden" name="descricao" value={`${t.titulo}${t.profissional ? ` — ${t.profissional.nome}` : ""}`} />

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { sessaoOrg, exigirGestorDaOrg } from "@/lib/sessao";
+import { sessaoOrg, exigirGestorCom } from "@/lib/sessao";
 import { podeEditar } from "@/lib/permissoes";
 
 async function projetoDaOrg(projetoId: string, organizacaoId: string) {
@@ -65,7 +65,8 @@ export async function criarApontamento(formData: FormData) {
       data: new Date(d.data),
       horas: d.horas,
       descricao: d.descricao ?? null,
-      valorHora: d.valorHora ?? null,
+      // Sem permissão de financeiro a pessoa não define valor/hora.
+      valorHora: s.perm.financeiro ? d.valorHora ?? null : null,
       etapaId: d.etapaId || null,
       userId: alvo,
     },
@@ -90,7 +91,8 @@ export async function atualizarApontamento(formData: FormData) {
       data: new Date(d.data),
       horas: d.horas,
       descricao: d.descricao ?? null,
-      valorHora: d.valorHora ?? null,
+      // Sem permissão de financeiro, o valor/hora existente é preservado.
+      ...(s.perm.financeiro ? { valorHora: d.valorHora ?? null } : {}),
       etapaId: d.etapaId || null,
     },
   });
@@ -110,7 +112,7 @@ export async function excluirApontamento(formData: FormData) {
 
 /** Lança os honorários (horas × valor/hora) como RECEITA no Financeiro. */
 export async function gerarReceitaHonorarios(formData: FormData) {
-  const s = await exigirGestorDaOrg();
+  const s = await exigirGestorCom("financeiro");
   const projetoId = String(formData.get("projetoId"));
   await projetoDaOrg(projetoId, s.organizacaoId);
 

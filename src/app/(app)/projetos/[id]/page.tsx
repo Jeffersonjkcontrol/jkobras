@@ -81,7 +81,9 @@ export default async function ProjetoVisaoGeralPage({ params }: { params: Promis
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card><CardContent><p className="text-sm text-muted">Período</p><p className="mt-1 flex items-center gap-1 text-sm font-medium"><CalendarRange className="h-4 w-4 text-muted" />{formatarData(projeto.dataInicioPrev)}–{formatarData(projeto.dataFimPrev)}</p></CardContent></Card>
         <Card><CardContent><p className="text-sm text-muted">Área</p><p className="mt-1 flex items-center gap-1 text-lg font-bold"><Ruler className="h-4 w-4 text-muted" />{projeto.areaM2 ? `${projeto.areaM2} m²` : "—"}</p></CardContent></Card>
-        <Card><CardContent><p className="text-sm text-muted">Valor do contrato</p><p className="mt-1 flex items-center gap-1 text-lg font-bold"><Wallet className="h-4 w-4 text-muted" />{formatarMoeda(projeto.valorContrato)}</p></CardContent></Card>
+        {s.perm.financeiro && (
+          <Card><CardContent><p className="text-sm text-muted">Valor do contrato</p><p className="mt-1 flex items-center gap-1 text-lg font-bold"><Wallet className="h-4 w-4 text-muted" />{formatarMoeda(projeto.valorContrato)}</p></CardContent></Card>
+        )}
         <Card><CardContent><p className="text-sm text-muted">Responsável</p><p className="mt-1 flex items-center gap-1 text-sm font-medium"><User2 className="h-4 w-4 text-muted" />{projeto.responsavel?.nome ?? "—"}</p></CardContent></Card>
       </div>
 

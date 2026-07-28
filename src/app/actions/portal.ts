@@ -81,6 +81,25 @@ export async function salvarOpcoesPortal(formData: FormData) {
   revalidatePath(`/projetos/${projetoId}`);
 }
 
+/** Liga/desliga o sigilo do documento DENTRO do escritório (quem vê restritos). */
+export async function alternarRestricaoDocumento(formData: FormData) {
+  const s = await exigirGestorDaOrg();
+  const id = String(formData.get("id"));
+  const projetoId = String(formData.get("projetoId"));
+
+  const doc = await prisma.documento.findFirst({
+    where: { id, organizacaoId: s.organizacaoId },
+    select: { restrito: true },
+  });
+  if (!doc) throw new Error("Documento não encontrado.");
+
+  await prisma.documento.updateMany({
+    where: { id, organizacaoId: s.organizacaoId },
+    data: { restrito: !doc.restrito },
+  });
+  revalidatePath(`/projetos/${projetoId}/documentos`);
+}
+
 /** Liga/desliga a visibilidade de UM documento no portal do cliente. */
 export async function alternarVisibilidadeDocumento(formData: FormData) {
   const s = await exigirGestorDaOrg();

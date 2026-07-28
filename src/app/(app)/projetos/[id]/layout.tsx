@@ -125,7 +125,7 @@ export default async function ProjetoLayout({
         </div>
       </div>
 
-      <ProjetoTabs id={projeto.id} />
+      <ProjetoTabs id={projeto.id} verOrcamentos={s.perm.orcamentos} verFinanceiro={s.perm.financeiro} />
 
       <div>{children}</div>
     </div>

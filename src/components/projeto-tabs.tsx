@@ -7,15 +7,24 @@ import { cn } from "@/lib/utils";
 
 type Aba = { href: string; label: string; icon: LucideIcon; exato?: boolean };
 
-export function ProjetoTabs({ id }: { id: string }) {
+export function ProjetoTabs({
+  id,
+  verOrcamentos = true,
+  verFinanceiro = true,
+}: {
+  id: string;
+  verOrcamentos?: boolean;
+  verFinanceiro?: boolean;
+}) {
   const pathname = usePathname();
   const base = `/projetos/${id}`;
   const abas: Aba[] = [
     { href: base, label: "Visão geral", icon: LayoutList, exato: true },
     { href: `${base}/arquitetura`, label: "Arquitetura", icon: Stamp },
     { href: `${base}/equipe`, label: "Equipe", icon: Users },
-    { href: `${base}/orcamentos`, label: "Orçamentos", icon: Calculator },
-    { href: `${base}/financeiro`, label: "Financeiro", icon: Wallet },
+    // Abas sensíveis: só aparecem para quem tem permissão de visualização.
+    ...(verOrcamentos ? [{ href: `${base}/orcamentos`, label: "Orçamentos", icon: Calculator }] : []),
+    ...(verFinanceiro ? [{ href: `${base}/financeiro`, label: "Financeiro", icon: Wallet }] : []),
     { href: `${base}/documentos`, label: "Documentos", icon: FolderOpen },
     { href: `${base}/rdo`, label: "Diário (RDO)", icon: ClipboardList },
   ];

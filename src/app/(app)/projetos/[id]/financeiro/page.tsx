@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, THead, TH, TR, TD } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmSubmit } from "@/components/confirm-submit";
+import { SemPermissao } from "@/components/sem-permissao";
 import { LancamentoForm } from "@/components/forms/lancamento-form";
 import { criarLancamento, atualizarLancamento, excluirLancamento } from "@/app/actions/financeiro";
 import { formatarMoeda, formatarData } from "@/lib/utils";
@@ -54,6 +55,9 @@ export default async function FinanceiroPage({
   const s = await sessaoOrg();
   const org = s.organizacaoId;
   const editavel = podeEditar(s.papel);
+
+  // Área sensível: exige permissão de visualização.
+  if (!s.perm.financeiro) return <SemPermissao area="o financeiro deste projeto" />;
 
   const projeto = await prisma.projeto.findFirst({
     where: { id, organizacaoId: org },
